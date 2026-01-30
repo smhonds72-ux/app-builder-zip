@@ -4,7 +4,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json package-lock.json ./
 
 # Install dependencies
 RUN npm install
@@ -21,36 +21,23 @@ FROM nginx:alpine
 # Remove default nginx config
 RUN rm /etc/nginx/conf.d/default.conf
 
-# Copy custom nginx config
-COPY <<EOF /etc/nginx/conf.d/default.conf
-server {
-    listen 3000;
-    server_name localhost;
-    
-    root /usr/share/nginx/html;
-    index index.html;
-    
-    # Remove X-Frame-Options to allow iframe embedding
-    add_header X-Frame-Options "" always;
-    
-    location / {
-        try_files \$uri \$uri/ /index.html;
-    }
-    
-    # Cache static assets
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-        add_header X-Frame-Options "" always;
-    }
-}
-EOF
+# Create custom nginx config
+RUN echo 'server { \
+    listen 3000; \
+    server_name _; \
+    root /usr/share/nginx/html; \
+    index index.html; \
+    location / { \
+        try_files $uri $uri/ /index.html; \
+    } \
+    # Remove X-Frame-Options header to allow preview mode \
+    proxy_hide_header X-Frame-Options; \
+    add_header X-Frame-Options ""; \
+}' > /etc/nginx/conf.d/default.conf
 
-# Copy built files from builder
+# Copy built files from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Expose port
 EXPOSE 3000
 
-# Start nginx
 CMD ["nginx", "-g", "daemon off;"]
