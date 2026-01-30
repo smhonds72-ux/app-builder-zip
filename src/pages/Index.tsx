@@ -41,12 +41,11 @@ const FloatingParticles = () => {
 
 const Index = () => {
   const handleCoachClick = () => {
-    console.log('Coach Portal clicked - Google OAuth would trigger here');
-    // In production: signIn('google', { callbackUrl: '/coach' })
+    window.location.href = '/coach';
   };
 
   const handlePlayerClick = () => {
-    console.log('Player Terminal clicked - Google OAuth would trigger here');
+    console.log('Player Terminal clicked - Coming soon!');
     // In production: signIn('google', { callbackUrl: '/player' })
   };
 
