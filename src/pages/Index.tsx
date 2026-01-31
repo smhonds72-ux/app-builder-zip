@@ -45,8 +45,7 @@ const Index = () => {
   };
 
   const handlePlayerClick = () => {
-    console.log('Player Terminal clicked - Coming soon!');
-    // In production: signIn('google', { callbackUrl: '/player' })
+    window.location.href = '/player';
   };
 
   return (
