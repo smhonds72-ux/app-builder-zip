@@ -13,6 +13,16 @@ import StrategyLab from "./pages/coach/StrategyLab";
 import VODReview from "./pages/coach/VODReview";
 import CoachHenry from "./pages/coach/CoachHenry";
 import Settings from "./pages/coach/Settings";
+import WhatIfSimulator from "./pages/coach/WhatIfSimulator";
+import TeamAgenda from "./pages/coach/TeamAgenda";
+import TrainingScheduler from "./pages/coach/TrainingScheduler";
+import { PlayerLayout } from "./components/player/PlayerLayout";
+import PlayerDashboard from "./pages/player/PlayerDashboard";
+import PlayerPerformance from "./pages/player/PlayerPerformance";
+import PlayerDrills from "./pages/player/PlayerDrills";
+import PlayerVOD from "./pages/player/PlayerVOD";
+import PlayerLeaks from "./pages/player/PlayerLeaks";
+import PlayerSettings from "./pages/player/PlayerSettings";
 
 const queryClient = new QueryClient();
 
@@ -34,9 +44,21 @@ const App = () => (
             <Route path="vod" element={<VODReview />} />
             <Route path="henry" element={<CoachHenry />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="simulator" element={<WhatIfSimulator />} />
+            <Route path="agenda" element={<TeamAgenda />} />
+            <Route path="training" element={<TrainingScheduler />} />
           </Route>
           
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          {/* Player Terminal Routes */}
+          <Route path="/player" element={<PlayerLayout />}>
+            <Route index element={<PlayerDashboard />} />
+            <Route path="performance" element={<PlayerPerformance />} />
+            <Route path="drills" element={<PlayerDrills />} />
+            <Route path="vod" element={<PlayerVOD />} />
+            <Route path="leaks" element={<PlayerLeaks />} />
+            <Route path="settings" element={<PlayerSettings />} />
+          </Route>
+          
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
