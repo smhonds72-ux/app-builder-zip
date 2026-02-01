@@ -6,13 +6,19 @@ import {
   TrendingUp, 
   Clock,
   Zap,
-  AlertTriangle
+  AlertTriangle,
+  PlayCircle,
+  Calendar,
+  MessageSquare
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { MetricCard } from '@/components/coach/MetricCard';
 import { TeamStatusCard } from '@/components/coach/TeamStatusCard';
 import { RecentMatchesCard } from '@/components/coach/RecentMatchesCard';
 import { QuickActionsCard } from '@/components/coach/QuickActionsCard';
 import { PerformanceChart } from '@/components/coach/PerformanceChart';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
 
 // Mock data
 const mockPlayers = [
@@ -39,6 +45,83 @@ const performanceData = [
 ];
 
 export default function CommandCenter() {
+  const navigate = useNavigate();
+
+  const handleViewStrategy = () => {
+    navigate('/coach/strategy');
+    toast({
+      title: "Opening Strategy Lab",
+      description: "Review your pre-match draft priorities.",
+    });
+  };
+
+  const handleStartVODReview = () => {
+    navigate('/coach/vod');
+    toast({
+      title: "Opening VOD Review",
+      description: "Review latest match footage.",
+    });
+  };
+
+  const handleSchedulePractice = () => {
+    navigate('/coach/training');
+    toast({
+      title: "Opening Training Scheduler",
+      description: "Set up team scrimmage.",
+    });
+  };
+
+  const handleCreateStrategy = () => {
+    navigate('/coach/strategy');
+    toast({
+      title: "Opening Strategy Lab",
+      description: "Design new team composition.",
+    });
+  };
+
+  const handleAskCoachHenry = () => {
+    navigate('/coach/henry');
+    toast({
+      title: "Opening Coach Henry",
+      description: "Get AI-powered insights.",
+    });
+  };
+
+  const quickActions = [
+    {
+      id: '1',
+      label: 'Start VOD Review',
+      description: 'Review latest match footage',
+      icon: PlayCircle,
+      color: 'cyan' as const,
+      onClick: handleStartVODReview,
+    },
+    {
+      id: '2',
+      label: 'Schedule Practice',
+      description: 'Set up team scrimmage',
+      icon: Calendar,
+      color: 'blue' as const,
+      onClick: handleSchedulePractice,
+    },
+    {
+      id: '3',
+      label: 'Create Strategy',
+      description: 'Design new team comp',
+      icon: Target,
+      color: 'green' as const,
+      onClick: handleCreateStrategy,
+    },
+    {
+      id: '4',
+      label: 'Ask Coach Henry',
+      description: 'AI-powered insights',
+      icon: MessageSquare,
+      color: 'warning' as const,
+      onClick: handleAskCoachHenry,
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -77,9 +160,13 @@ export default function CommandCenter() {
           <p className="font-medium text-foreground">Match Alert: vs Team Liquid in 2 hours</p>
           <p className="text-sm text-muted-foreground">Pre-match strategy session recommended. Review draft priorities.</p>
         </div>
-        <button className="px-4 py-2 text-sm font-medium text-status-warning hover:bg-status-warning/20 rounded-lg transition-colors">
+        <Button 
+          variant="ghost" 
+          className="text-status-warning hover:bg-status-warning/20"
+          onClick={handleViewStrategy}
+        >
           View Strategy
-        </button>
+        </Button>
       </motion.div>
 
       {/* Key Metrics Grid */}
@@ -130,7 +217,7 @@ export default function CommandCenter() {
 
         {/* Right Column - Quick Actions */}
         <div>
-          <QuickActionsCard delay={0.7} />
+          <QuickActionsCard actions={quickActions} delay={0.7} />
         </div>
       </div>
 
