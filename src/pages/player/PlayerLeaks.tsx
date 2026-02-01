@@ -8,9 +8,11 @@ import {
   Dumbbell,
   Zap
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { toast } from '@/hooks/use-toast';
 import {
   BarChart,
   Bar,
@@ -46,7 +48,8 @@ const detailedLeaks = [
       'Poor wave state management'
     ],
     drillAvailable: true,
-    drillName: 'Side Lane Safety'
+    drillName: 'Side Lane Safety',
+    drillId: '4'
   },
   {
     id: '2',
@@ -63,7 +66,8 @@ const detailedLeaks = [
       'Not syncing with team tempo'
     ],
     drillAvailable: true,
-    drillName: 'Tempo Recall Optimization'
+    drillName: 'Tempo Recall Optimization',
+    drillId: '3'
   },
   {
     id: '3',
@@ -80,7 +84,8 @@ const detailedLeaks = [
       'Predictable warding patterns'
     ],
     drillAvailable: false,
-    drillName: null
+    drillName: null,
+    drillId: null
   }
 ];
 
@@ -94,6 +99,18 @@ const getSeverityColor = (severity: string) => {
 };
 
 export default function PlayerLeaks() {
+  const navigate = useNavigate();
+
+  const handleStartDrill = (drillName: string | null, drillId: string | null) => {
+    if (drillId) {
+      navigate('/player/drills');
+      toast({
+        title: "Opening Drill",
+        description: `Navigating to ${drillName}...`,
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <motion.div
@@ -246,7 +263,10 @@ export default function PlayerLeaks() {
 
             {leak.drillAvailable && (
               <div className="pt-4 border-t border-brand-blue/10">
-                <Button className="bg-brand-blue hover:bg-brand-blue/80">
+                <Button 
+                  className="bg-brand-blue hover:bg-brand-blue/80"
+                  onClick={() => handleStartDrill(leak.drillName, leak.drillId)}
+                >
                   <Dumbbell className="w-4 h-4 mr-2" />
                   Start Drill: {leak.drillName}
                   <ChevronRight className="w-4 h-4 ml-1" />

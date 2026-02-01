@@ -9,9 +9,11 @@ import {
   ChevronRight,
   Zap
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { toast } from '@/hooks/use-toast';
 import {
   RadarChart,
   PolarGrid,
@@ -37,7 +39,8 @@ const topLeaks = [
     value: '3.2 per game', 
     description: 'Mostly in side lane overextensions',
     severity: 'high',
-    drillAvailable: true
+    drillAvailable: true,
+    drillId: '4'
   },
   { 
     id: '2', 
@@ -45,7 +48,8 @@ const topLeaks = [
     value: '-240g per game', 
     description: 'Suboptimal recall timings',
     severity: 'medium',
-    drillAvailable: true
+    drillAvailable: true,
+    drillId: '3'
   },
   { 
     id: '3', 
@@ -53,17 +57,58 @@ const topLeaks = [
     value: '62% efficiency', 
     description: 'Ward placement optimization needed',
     severity: 'low',
-    drillAvailable: false
+    drillAvailable: false,
+    drillId: null
   },
 ];
 
 const upcomingItems = [
-  { type: 'drill', title: 'Baron Positioning Drill', dueIn: '2 hours', status: 'pending' },
-  { type: 'vod', title: 'VOD Session: vs TL', dueIn: 'Tomorrow 2PM', status: 'scheduled' },
-  { type: 'drill', title: 'Wave Management', dueIn: '3 days', status: 'pending' },
+  { type: 'drill', title: 'Baron Positioning Drill', dueIn: '2 hours', status: 'pending', id: '1' },
+  { type: 'vod', title: 'VOD Session: vs TL', dueIn: 'Tomorrow 2PM', status: 'scheduled', id: 'vod-1' },
+  { type: 'drill', title: 'Wave Management', dueIn: '3 days', status: 'pending', id: '2' },
 ];
 
 export default function PlayerDashboard() {
+  const navigate = useNavigate();
+
+  const handleViewDrills = () => {
+    navigate('/player/drills');
+    toast({
+      title: "Navigating to Drills",
+      description: "3 new drills are waiting for you!",
+    });
+  };
+
+  const handleViewDrill = (drillId: string | null) => {
+    if (drillId) {
+      navigate('/player/drills');
+      toast({
+        title: "Opening Drill",
+        description: "Navigate to the drill to start practicing.",
+      });
+    }
+  };
+
+  const handleStartItem = (item: typeof upcomingItems[0]) => {
+    if (item.type === 'drill') {
+      navigate('/player/drills');
+      toast({
+        title: "Starting Drill",
+        description: `Opening ${item.title}...`,
+      });
+    } else {
+      navigate('/player/vod');
+      toast({
+        title: "Opening VOD Session",
+        description: `Navigating to ${item.title}...`,
+      });
+    }
+  };
+
+  const handleViewAllTasks = () => {
+    navigate('/player/drills');
+  };
+
   return (
     <div className="space-y-6">
       <motion.div
@@ -104,6 +149,7 @@ export default function PlayerDashboard() {
         <Button 
           variant="outline" 
           className="border-brand-blue/30 text-brand-blue hover:bg-brand-blue/20"
+          onClick={handleViewDrills}
         >
           View Drills
         </Button>
@@ -208,6 +254,7 @@ export default function PlayerDashboard() {
                     variant="ghost" 
                     size="sm" 
                     className="mt-3 text-brand-blue hover:bg-brand-blue/10"
+                    onClick={() => handleViewDrill(leak.drillId)}
                   >
                     View Drill <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
@@ -227,7 +274,12 @@ export default function PlayerDashboard() {
         >
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-display font-bold text-foreground">UPCOMING TASKS</h2>
-            <Button variant="ghost" size="sm" className="text-brand-blue hover:bg-brand-blue/10">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-brand-blue hover:bg-brand-blue/10"
+              onClick={handleViewAllTasks}
+            >
               View All
             </Button>
           </div>
@@ -252,7 +304,12 @@ export default function PlayerDashboard() {
                   <p className="font-medium text-foreground">{item.title}</p>
                   <p className="text-sm text-muted-foreground">Due: {item.dueIn}</p>
                 </div>
-                <Button variant="outline" size="sm" className="border-brand-blue/30">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="border-brand-blue/30"
+                  onClick={() => handleStartItem(item)}
+                >
                   Start
                 </Button>
               </div>
