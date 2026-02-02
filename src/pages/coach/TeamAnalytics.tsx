@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useState } from 'react';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -7,7 +8,10 @@ import {
   Swords,
   Shield,
   Flame,
-  Clock
+  Clock,
+  Filter,
+  Download,
+  ChevronRight
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -28,6 +32,22 @@ import {
 } from 'recharts';
 import { MetricCard } from '@/components/coach/MetricCard';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
 
 // Mock data
 const playerStats = [
@@ -74,19 +94,91 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function TeamAnalytics() {
+  const { toast } = useToast();
+  const [selectedPlayer, setSelectedPlayer] = useState<typeof playerStats[0] | null>(null);
+  const [showPlayerDetail, setShowPlayerDetail] = useState(false);
+  const [chartFilters, setChartFilters] = useState({
+    kills: true,
+    deaths: true,
+    assists: true,
+  });
+
+  const handlePlayerClick = (player: typeof playerStats[0]) => {
+    setSelectedPlayer(player);
+    setShowPlayerDetail(true);
+  };
+
+  const handleExport = () => {
+    toast({
+      title: "Exporting analytics...",
+      description: "Your report will download shortly.",
+    });
+    setTimeout(() => {
+      toast({
+        title: "Export Complete",
+        description: "Team analytics report exported successfully.",
+      });
+    }, 1500);
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col md:flex-row md:items-center justify-between gap-4"
       >
-        <h1 className="text-3xl font-display font-bold text-foreground tracking-wide">
-          TEAM ANALYTICS
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Comprehensive performance metrics and insights
-        </p>
+        <div>
+          <h1 className="text-3xl font-display font-bold text-foreground tracking-wide">
+            TEAM ANALYTICS
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Comprehensive performance metrics and insights
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" className="border-primary/30">
+                <Filter className="w-4 h-4 mr-2" />
+                Filters
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Chart Filters</SheetTitle>
+              </SheetHeader>
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/30">
+                  <span className="font-medium">Show Kills</span>
+                  <Switch 
+                    checked={chartFilters.kills}
+                    onCheckedChange={(checked) => setChartFilters(prev => ({ ...prev, kills: checked }))}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/30">
+                  <span className="font-medium">Show Deaths</span>
+                  <Switch 
+                    checked={chartFilters.deaths}
+                    onCheckedChange={(checked) => setChartFilters(prev => ({ ...prev, deaths: checked }))}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/30">
+                  <span className="font-medium">Show Assists</span>
+                  <Switch 
+                    checked={chartFilters.assists}
+                    onCheckedChange={(checked) => setChartFilters(prev => ({ ...prev, assists: checked }))}
+                  />
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+          <Button onClick={handleExport} className="bg-primary hover:bg-primary/90">
+            <Download className="w-4 h-4 mr-2" />
+            Export Report
+          </Button>
+        </div>
       </motion.div>
 
       {/* Top Metrics */}
@@ -154,25 +246,31 @@ export default function TeamAnalytics() {
                   tickLine={false}
                 />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="kills" fill="hsl(160 84% 39%)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="deaths" fill="hsl(0 84% 60%)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="assists" fill="hsl(187 94% 43%)" radius={[4, 4, 0, 0]} />
+                {chartFilters.kills && <Bar dataKey="kills" fill="hsl(160 84% 39%)" radius={[4, 4, 0, 0]} />}
+                {chartFilters.deaths && <Bar dataKey="deaths" fill="hsl(0 84% 60%)" radius={[4, 4, 0, 0]} />}
+                {chartFilters.assists && <Bar dataKey="assists" fill="hsl(187 94% 43%)" radius={[4, 4, 0, 0]} />}
               </BarChart>
             </ResponsiveContainer>
           </div>
           <div className="flex items-center justify-center gap-6 mt-4">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-status-success" />
-              <span className="text-xs text-muted-foreground">Kills</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-destructive" />
-              <span className="text-xs text-muted-foreground">Deaths</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-primary" />
-              <span className="text-xs text-muted-foreground">Assists</span>
-            </div>
+            {chartFilters.kills && (
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-status-success" />
+                <span className="text-xs text-muted-foreground">Kills</span>
+              </div>
+            )}
+            {chartFilters.deaths && (
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-destructive" />
+                <span className="text-xs text-muted-foreground">Deaths</span>
+              </div>
+            )}
+            {chartFilters.assists && (
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-primary" />
+                <span className="text-xs text-muted-foreground">Assists</span>
+              </div>
+            )}
           </div>
         </motion.div>
 
@@ -277,9 +375,11 @@ export default function TeamAnalytics() {
               .map((player, index) => (
                 <div 
                   key={player.name}
+                  onClick={() => handlePlayerClick(player)}
                   className={cn(
-                    "flex items-center justify-between p-3 rounded-lg",
-                    "bg-secondary/30 border border-primary/10"
+                    "flex items-center justify-between p-3 rounded-lg cursor-pointer",
+                    "bg-secondary/30 border border-primary/10",
+                    "hover:border-primary/30 hover:bg-secondary/50 transition-all"
                   )}
                 >
                   <div className="flex items-center gap-3">
@@ -299,15 +399,64 @@ export default function TeamAnalytics() {
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-display font-bold text-primary">{player.kda}</p>
-                    <p className="text-xs text-muted-foreground">KDA</p>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="font-display font-bold text-primary">{player.kda}</p>
+                      <p className="text-xs text-muted-foreground">KDA</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </div>
                 </div>
               ))}
           </div>
         </motion.div>
       </div>
+
+      {/* Player Detail Dialog */}
+      <Dialog open={showPlayerDetail} onOpenChange={setShowPlayerDetail}>
+        <DialogContent className="bg-card border-primary/30">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">{selectedPlayer?.name} - Detailed Stats</DialogTitle>
+          </DialogHeader>
+          {selectedPlayer && (
+            <div className="space-y-4 mt-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center p-4 rounded-lg bg-secondary/30">
+                  <p className="text-2xl font-display font-bold text-status-success">{selectedPlayer.kills}</p>
+                  <p className="text-xs text-muted-foreground">Kills</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-secondary/30">
+                  <p className="text-2xl font-display font-bold text-destructive">{selectedPlayer.deaths}</p>
+                  <p className="text-xs text-muted-foreground">Deaths</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-secondary/30">
+                  <p className="text-2xl font-display font-bold text-primary">{selectedPlayer.assists}</p>
+                  <p className="text-xs text-muted-foreground">Assists</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 rounded-lg bg-secondary/30">
+                  <p className="text-lg font-display font-bold text-foreground">{selectedPlayer.cs}</p>
+                  <p className="text-xs text-muted-foreground">Total CS</p>
+                </div>
+                <div className="p-4 rounded-lg bg-secondary/30">
+                  <p className="text-lg font-display font-bold text-foreground">{selectedPlayer.vision}</p>
+                  <p className="text-xs text-muted-foreground">Vision Score</p>
+                </div>
+              </div>
+              <Button 
+                className="w-full bg-primary hover:bg-primary/90"
+                onClick={() => {
+                  setShowPlayerDetail(false);
+                  window.location.href = '/coach/players';
+                }}
+              >
+                View Full Profile
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

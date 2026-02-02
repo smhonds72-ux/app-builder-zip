@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   Trophy, 
   Users, 
@@ -13,6 +14,7 @@ import { TeamStatusCard } from '@/components/coach/TeamStatusCard';
 import { RecentMatchesCard } from '@/components/coach/RecentMatchesCard';
 import { QuickActionsCard } from '@/components/coach/QuickActionsCard';
 import { PerformanceChart } from '@/components/coach/PerformanceChart';
+import { Button } from '@/components/ui/button';
 
 // Mock data
 const mockPlayers = [
@@ -39,6 +41,12 @@ const performanceData = [
 ];
 
 export default function CommandCenter() {
+  const navigate = useNavigate();
+
+  const handleViewStrategy = () => {
+    navigate('/coach/strategy');
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -77,9 +85,13 @@ export default function CommandCenter() {
           <p className="font-medium text-foreground">Match Alert: vs Team Liquid in 2 hours</p>
           <p className="text-sm text-muted-foreground">Pre-match strategy session recommended. Review draft priorities.</p>
         </div>
-        <button className="px-4 py-2 text-sm font-medium text-status-warning hover:bg-status-warning/20 rounded-lg transition-colors">
+        <Button 
+          onClick={handleViewStrategy}
+          variant="ghost"
+          className="text-status-warning hover:bg-status-warning/20"
+        >
           View Strategy
-        </button>
+        </Button>
       </motion.div>
 
       {/* Key Metrics Grid */}

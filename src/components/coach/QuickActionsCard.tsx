@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   PlayCircle, 
   Calendar, 
@@ -17,7 +18,7 @@ interface QuickAction {
   description: string;
   icon: LucideIcon;
   color: 'cyan' | 'blue' | 'green' | 'warning';
-  onClick?: () => void;
+  route?: string;
 }
 
 const colorStyles = {
@@ -50,6 +51,7 @@ const defaultActions: QuickAction[] = [
     description: 'Review latest match footage',
     icon: PlayCircle,
     color: 'cyan',
+    route: '/coach/vod',
   },
   {
     id: '2',
@@ -57,6 +59,7 @@ const defaultActions: QuickAction[] = [
     description: 'Set up team scrimmage',
     icon: Calendar,
     color: 'blue',
+    route: '/coach/training',
   },
   {
     id: '3',
@@ -64,6 +67,7 @@ const defaultActions: QuickAction[] = [
     description: 'Design new team comp',
     icon: Target,
     color: 'green',
+    route: '/coach/strategy',
   },
   {
     id: '4',
@@ -71,6 +75,7 @@ const defaultActions: QuickAction[] = [
     description: 'AI-powered insights',
     icon: MessageSquare,
     color: 'warning',
+    route: '/coach/henry',
   },
 ];
 
@@ -80,6 +85,14 @@ interface QuickActionsCardProps {
 }
 
 export function QuickActionsCard({ actions = defaultActions, delay = 0 }: QuickActionsCardProps) {
+  const navigate = useNavigate();
+
+  const handleActionClick = (action: QuickAction) => {
+    if (action.route) {
+      navigate(action.route);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -104,7 +117,7 @@ export function QuickActionsCard({ actions = defaultActions, delay = 0 }: QuickA
                 styles.bg,
                 styles.border
               )}
-              onClick={action.onClick}
+              onClick={() => handleActionClick(action)}
             >
               <action.icon className={cn("w-6 h-6 mb-2", styles.icon)} />
               <p className="font-medium text-foreground text-sm text-left">{action.label}</p>
