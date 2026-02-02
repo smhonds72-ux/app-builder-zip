@@ -1,4 +1,6 @@
 import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Target, 
   Plus, 
@@ -8,10 +10,30 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  ChevronRight
+  ChevronRight,
+  X,
+  Archive,
+  Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 
 interface Strategy {
   id: string;
@@ -23,7 +45,13 @@ interface Strategy {
   lastUsed?: string;
 }
 
-const strategies: Strategy[] = [
+interface DraftNote {
+  champion: string;
+  priority: 'high' | 'medium' | 'low';
+  note: string;
+}
+
+const initialStrategies: Strategy[] = [
   { id: '1', name: 'Dive Comp Alpha', game: 'LoL', type: 'Team Comp', status: 'active', winRate: 78, lastUsed: '2 days ago' },
   { id: '2', name: 'Baron Rush Protocol', game: 'LoL', type: 'Objective', status: 'active', winRate: 65, lastUsed: 'Yesterday' },
   { id: '3', name: 'Early Dragon Stack', game: 'LoL', type: 'Early Game', status: 'testing', winRate: 52 },
@@ -31,7 +59,7 @@ const strategies: Strategy[] = [
   { id: '5', name: 'Protect the Carry', game: 'LoL', type: 'Team Comp', status: 'archived', winRate: 45 },
 ];
 
-const draftNotes = [
+const initialDraftNotes: DraftNote[] = [
   { champion: 'Gnar', priority: 'high', note: 'Must ban against TL, Impact comfort pick' },
   { champion: 'Rell', priority: 'medium', note: 'Strong with our engage comps' },
   { champion: 'Jinx', priority: 'high', note: 'Berserker pop-off potential' },
@@ -51,6 +79,87 @@ const priorityColors = {
 };
 
 export default function StrategyLab() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [strategies, setStrategies] = useState<Strategy[]>(initialStrategies);
+  const [draftNotes, setDraftNotes] = useState<DraftNote[]>(initialDraftNotes);
+  const [filter, setFilter] = useState<'All' | 'Active' | 'Testing'>('All');
+  const [showNewStrategy, setShowNewStrategy] = useState(false);
+  const [showStrategyDetail, setShowStrategyDetail] = useState(false);
+  const [showNewNote, setShowNewNote] = useState(false);
+  const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(null);
+  const [newStrategy, setNewStrategy] = useState({
+    name: '',
+    game: 'LoL' as 'LoL' | 'VALORANT',
+    type: 'Team Comp' as Strategy['type'],
+    description: ''
+  });
+  const [newNote, setNewNote] = useState({
+    champion: '',
+    priority: 'medium' as 'high' | 'medium' | 'low',
+    note: ''
+  });
+
+  const filteredStrategies = strategies.filter(s => {
+    if (filter === 'All') return true;
+    if (filter === 'Active') return s.status === 'active';
+    if (filter === 'Testing') return s.status === 'testing';
+    return true;
+  });
+
+  const handleCreateStrategy = () => {
+    if (!newStrategy.name.trim()) {
+      toast({ title: "Error", description: "Please enter a strategy name", variant: "destructive" });
+      return;
+    }
+    
+    const strategy: Strategy = {
+      id: Date.now().toString(),
+      name: newStrategy.name,
+      game: newStrategy.game,
+      type: newStrategy.type,
+      status: 'testing',
+    };
+    
+    setStrategies(prev => [strategy, ...prev]);
+    setShowNewStrategy(false);
+    setNewStrategy({ name: '', game: 'LoL', type: 'Team Comp', description: '' });
+    toast({ title: "Strategy Created", description: `"${strategy.name}" has been added to testing.` });
+  };
+
+  const handleStrategyClick = (strategy: Strategy) => {
+    setSelectedStrategy(strategy);
+    setShowStrategyDetail(true);
+  };
+
+  const handleArchiveStrategy = (id: string) => {
+    setStrategies(prev => prev.map(s => s.id === id ? { ...s, status: 'archived' as const } : s));
+    setShowStrategyDetail(false);
+    toast({ title: "Strategy Archived", description: "Strategy moved to archive." });
+  };
+
+  const handleDeleteStrategy = (id: string) => {
+    setStrategies(prev => prev.filter(s => s.id !== id));
+    setShowStrategyDetail(false);
+    toast({ title: "Strategy Deleted", description: "Strategy has been removed." });
+  };
+
+  const handleAddNote = () => {
+    if (!newNote.champion.trim() || !newNote.note.trim()) {
+      toast({ title: "Error", description: "Please fill in all fields", variant: "destructive" });
+      return;
+    }
+    
+    setDraftNotes(prev => [...prev, newNote]);
+    setShowNewNote(false);
+    setNewNote({ champion: '', priority: 'medium', note: '' });
+    toast({ title: "Note Added", description: `Draft note for ${newNote.champion} added.` });
+  };
+
+  const handleLaunchSimulator = () => {
+    navigate('/coach/what-if');
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -68,7 +177,7 @@ export default function StrategyLab() {
           </p>
         </div>
         
-        <Button className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
+        <Button onClick={() => setShowNewStrategy(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
           <Plus className="w-4 h-4" />
           New Strategy
         </Button>
@@ -88,24 +197,25 @@ export default function StrategyLab() {
               SAVED STRATEGIES
             </h3>
             <div className="flex gap-2">
-              {['All', 'Active', 'Testing'].map((filter) => (
+              {(['All', 'Active', 'Testing'] as const).map((f) => (
                 <button
-                  key={filter}
+                  key={f}
+                  onClick={() => setFilter(f)}
                   className={cn(
                     "px-3 py-1 text-xs font-medium rounded-lg transition-colors",
-                    filter === 'All' 
+                    filter === f 
                       ? "bg-primary/20 text-primary" 
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                   )}
                 >
-                  {filter}
+                  {f}
                 </button>
               ))}
             </div>
           </div>
 
           <div className="space-y-3">
-            {strategies.map((strategy, index) => {
+            {filteredStrategies.map((strategy, index) => {
               const status = statusColors[strategy.status];
               return (
                 <motion.div
@@ -113,6 +223,7 @@ export default function StrategyLab() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.2 + index * 0.1 }}
+                  onClick={() => handleStrategyClick(strategy)}
                   className={cn(
                     "flex items-center justify-between p-4 rounded-lg cursor-pointer",
                     "bg-secondary/30 border border-primary/10",
@@ -206,7 +317,7 @@ export default function StrategyLab() {
             ))}
           </div>
 
-          <Button variant="outline" className="w-full mt-4 border-primary/30 hover:bg-primary/10">
+          <Button onClick={() => setShowNewNote(true)} variant="outline" className="w-full mt-4 border-primary/30 hover:bg-primary/10">
             <Plus className="w-4 h-4 mr-2" />
             Add Note
           </Button>
@@ -232,11 +343,187 @@ export default function StrategyLab() {
               </p>
             </div>
           </div>
-          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
+          <Button onClick={handleLaunchSimulator} className="bg-primary hover:bg-primary/90 text-primary-foreground">
             Launch Simulator
           </Button>
         </div>
       </motion.div>
+
+      {/* New Strategy Dialog */}
+      <Dialog open={showNewStrategy} onOpenChange={setShowNewStrategy}>
+        <DialogContent className="bg-card border-primary/30">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Create New Strategy</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Strategy Name</label>
+              <Input 
+                value={newStrategy.name}
+                onChange={(e) => setNewStrategy(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g., Aggressive Early Game"
+                className="bg-secondary/50 border-primary/20"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">Game</label>
+                <Select value={newStrategy.game} onValueChange={(v: 'LoL' | 'VALORANT') => setNewStrategy(prev => ({ ...prev, game: v }))}>
+                  <SelectTrigger className="bg-secondary/50 border-primary/20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="LoL">League of Legends</SelectItem>
+                    <SelectItem value="VALORANT">VALORANT</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">Type</label>
+                <Select value={newStrategy.type} onValueChange={(v: Strategy['type']) => setNewStrategy(prev => ({ ...prev, type: v }))}>
+                  <SelectTrigger className="bg-secondary/50 border-primary/20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Team Comp">Team Comp</SelectItem>
+                    <SelectItem value="Early Game">Early Game</SelectItem>
+                    <SelectItem value="Late Game">Late Game</SelectItem>
+                    <SelectItem value="Objective">Objective</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Description</label>
+              <Textarea 
+                value={newStrategy.description}
+                onChange={(e) => setNewStrategy(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Describe the strategy..."
+                className="bg-secondary/50 border-primary/20"
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowNewStrategy(false)} className="border-primary/30">
+              Cancel
+            </Button>
+            <Button onClick={handleCreateStrategy} className="bg-primary hover:bg-primary/90">
+              Create Strategy
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Strategy Detail Dialog */}
+      <Dialog open={showStrategyDetail} onOpenChange={setShowStrategyDetail}>
+        <DialogContent className="bg-card border-primary/30">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">{selectedStrategy?.name}</DialogTitle>
+          </DialogHeader>
+          {selectedStrategy && (
+            <div className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 rounded-lg bg-secondary/30">
+                  <p className="text-sm text-muted-foreground">Game</p>
+                  <p className="font-medium text-foreground">{selectedStrategy.game}</p>
+                </div>
+                <div className="p-4 rounded-lg bg-secondary/30">
+                  <p className="text-sm text-muted-foreground">Type</p>
+                  <p className="font-medium text-foreground">{selectedStrategy.type}</p>
+                </div>
+              </div>
+              {selectedStrategy.winRate && (
+                <div className="p-4 rounded-lg bg-secondary/30">
+                  <p className="text-sm text-muted-foreground">Win Rate</p>
+                  <p className={cn(
+                    "text-2xl font-display font-bold",
+                    selectedStrategy.winRate >= 60 ? "text-status-success" : 
+                    selectedStrategy.winRate >= 50 ? "text-status-warning" : "text-destructive"
+                  )}>{selectedStrategy.winRate}%</p>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1 border-primary/30"
+                  onClick={() => handleArchiveStrategy(selectedStrategy.id)}
+                >
+                  <Archive className="w-4 h-4 mr-2" />
+                  Archive
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10"
+                  onClick={() => handleDeleteStrategy(selectedStrategy.id)}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              </div>
+              <Button 
+                className="w-full bg-primary hover:bg-primary/90"
+                onClick={() => {
+                  setShowStrategyDetail(false);
+                  handleLaunchSimulator();
+                }}
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Test in Simulator
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* New Note Dialog */}
+      <Dialog open={showNewNote} onOpenChange={setShowNewNote}>
+        <DialogContent className="bg-card border-primary/30">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Add Draft Note</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Champion</label>
+              <Input 
+                value={newNote.champion}
+                onChange={(e) => setNewNote(prev => ({ ...prev, champion: e.target.value }))}
+                placeholder="e.g., Ahri"
+                className="bg-secondary/50 border-primary/20"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Priority</label>
+              <Select value={newNote.priority} onValueChange={(v: 'high' | 'medium' | 'low') => setNewNote(prev => ({ ...prev, priority: v }))}>
+                <SelectTrigger className="bg-secondary/50 border-primary/20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Note</label>
+              <Textarea 
+                value={newNote.note}
+                onChange={(e) => setNewNote(prev => ({ ...prev, note: e.target.value }))}
+                placeholder="Draft notes..."
+                className="bg-secondary/50 border-primary/20"
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowNewNote(false)} className="border-primary/30">
+              Cancel
+            </Button>
+            <Button onClick={handleAddNote} className="bg-primary hover:bg-primary/90">
+              Add Note
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

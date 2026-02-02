@@ -1,5 +1,7 @@
 import { motion } from 'framer-motion';
-import { User, BarChart3, TrendingUp, TrendingDown, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { User, BarChart3, TrendingUp, TrendingDown, ChevronRight, MessageSquare, Calendar, Dumbbell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
   RadarChart, 
@@ -9,6 +11,14 @@ import {
   Radar, 
   ResponsiveContainer 
 } from 'recharts';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface Player {
   id: string;
@@ -105,6 +115,47 @@ const players: Player[] = [
 ];
 
 export default function Players() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [showPlayerDetail, setShowPlayerDetail] = useState(false);
+
+  const handlePlayerClick = (player: Player) => {
+    setSelectedPlayer(player);
+    setShowPlayerDetail(true);
+  };
+
+  const handleScheduleMeeting = (playerName: string) => {
+    toast({
+      title: "Meeting Scheduled",
+      description: `1-on-1 meeting with ${playerName} scheduled for tomorrow at 10:00 AM.`,
+    });
+    setShowPlayerDetail(false);
+  };
+
+  const handleAssignDrill = (playerName: string) => {
+    toast({
+      title: "Drill Assigned",
+      description: `New training drill assigned to ${playerName}.`,
+    });
+    navigate('/coach/training');
+  };
+
+  const handleViewVOD = (playerName: string) => {
+    toast({
+      title: "Loading VODs",
+      description: `Loading recent VODs for ${playerName}...`,
+    });
+    navigate('/coach/vod');
+  };
+
+  const handleMessagePlayer = (playerName: string) => {
+    toast({
+      title: "Opening Chat",
+      description: `Opening direct message with ${playerName}...`,
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -128,6 +179,7 @@ export default function Players() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 + index * 0.1 }}
+            onClick={() => handlePlayerClick(player)}
             className={cn(
               "group p-6 rounded-xl cursor-pointer",
               "bg-card/50 backdrop-blur-xl border border-primary/30",
@@ -207,6 +259,112 @@ export default function Players() {
           </motion.div>
         ))}
       </div>
+
+      {/* Player Detail Dialog */}
+      <Dialog open={showPlayerDetail} onOpenChange={setShowPlayerDetail}>
+        <DialogContent className="bg-card border-primary/30 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/50 to-brand-blue/50 flex items-center justify-center">
+                <User className="w-5 h-5 text-foreground" />
+              </div>
+              {selectedPlayer?.name} - {selectedPlayer?.role}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedPlayer && (
+            <div className="space-y-6 mt-4">
+              {/* Radar Chart */}
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart data={selectedPlayer.radarData}>
+                    <PolarGrid stroke="hsl(217 33% 17%)" />
+                    <PolarAngleAxis 
+                      dataKey="subject" 
+                      stroke="hsl(215 20% 65%)"
+                      fontSize={11}
+                    />
+                    <PolarRadiusAxis 
+                      stroke="hsl(215 20% 65%)"
+                      fontSize={10}
+                      angle={30}
+                    />
+                    <Radar
+                      dataKey="value"
+                      stroke="hsl(187 94% 43%)"
+                      fill="hsl(187 94% 43%)"
+                      fillOpacity={0.3}
+                      strokeWidth={2}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-5 gap-3">
+                <div className="text-center p-3 rounded-lg bg-secondary/30">
+                  <p className="text-xl font-display font-bold text-primary">{selectedPlayer.stats.kda}</p>
+                  <p className="text-xs text-muted-foreground">KDA</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-secondary/30">
+                  <p className="text-xl font-display font-bold text-brand-blue">{selectedPlayer.stats.csPerMin}</p>
+                  <p className="text-xs text-muted-foreground">CS/Min</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-secondary/30">
+                  <p className="text-xl font-display font-bold text-foreground">{selectedPlayer.stats.vision}</p>
+                  <p className="text-xs text-muted-foreground">Vision</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-secondary/30">
+                  <p className="text-xl font-display font-bold text-foreground">{(selectedPlayer.stats.damage / 1000).toFixed(1)}k</p>
+                  <p className="text-xs text-muted-foreground">Damage</p>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-secondary/30">
+                  <p className={cn(
+                    "text-xl font-display font-bold",
+                    selectedPlayer.stats.winRate >= 70 ? "text-status-success" : 
+                    selectedPlayer.stats.winRate >= 50 ? "text-status-warning" : "text-destructive"
+                  )}>{selectedPlayer.stats.winRate}%</p>
+                  <p className="text-xs text-muted-foreground">Win Rate</p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-3">
+                <Button 
+                  variant="outline" 
+                  className="border-primary/30"
+                  onClick={() => handleMessagePlayer(selectedPlayer.name)}
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Message Player
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="border-primary/30"
+                  onClick={() => handleScheduleMeeting(selectedPlayer.name)}
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Schedule 1-on-1
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="border-primary/30"
+                  onClick={() => handleAssignDrill(selectedPlayer.name)}
+                >
+                  <Dumbbell className="w-4 h-4 mr-2" />
+                  Assign Drill
+                </Button>
+                <Button 
+                  className="bg-primary hover:bg-primary/90"
+                  onClick={() => handleViewVOD(selectedPlayer.name)}
+                >
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  View VODs
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

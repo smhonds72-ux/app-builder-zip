@@ -1,4 +1,6 @@
 import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   FileText, 
   Clock, 
@@ -9,13 +11,41 @@ import {
   Download,
   Calendar,
   Edit3,
-  Trash2
+  Trash2,
+  Save,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 
-const agendaItems = [
+interface AgendaItem {
+  id: string;
+  priority: number;
+  title: string;
+  dsv: number;
+  timestamp: string;
+  description: string;
+  notes: string;
+}
+
+const initialAgendaItems: AgendaItem[] = [
   {
     id: '1',
     priority: 1,
@@ -55,6 +85,131 @@ const agendaItems = [
 ];
 
 export default function TeamAgenda() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [agendaItems, setAgendaItems] = useState<AgendaItem[]>(initialAgendaItems);
+  const [coachNotes, setCoachNotes] = useState("Focus on Baron positioning - JAX needs to maintain better proximity to pit. Team coordination on objective calls needs work.");
+  const [isSaving, setIsSaving] = useState(false);
+  const [showNewItem, setShowNewItem] = useState(false);
+  const [showEditItem, setShowEditItem] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<AgendaItem | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [newItem, setNewItem] = useState({
+    title: '',
+    timestamp: '',
+    description: '',
+    dsv: 0,
+  });
+
+  const handleExportPDF = () => {
+    toast({
+      title: "Exporting PDF",
+      description: "Your agenda is being exported...",
+    });
+    setTimeout(() => {
+      toast({
+        title: "Export Complete",
+        description: "Team agenda PDF has been downloaded.",
+      });
+    }, 1500);
+  };
+
+  const handleScheduleSession = () => {
+    navigate('/coach/training');
+  };
+
+  const handleAutoGenerate = async () => {
+    setIsGenerating(true);
+    toast({
+      title: "Analyzing Match",
+      description: "AI is identifying key moments...",
+    });
+    
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    const newAgendaItem: AgendaItem = {
+      id: Date.now().toString(),
+      priority: agendaItems.length + 1,
+      title: 'Vision Setup Before Dragon at 14:00',
+      dsv: -6.8,
+      timestamp: '14:00',
+      description: 'Team vision setup was late, leading to risky face-check. Could have been punished.',
+      notes: ''
+    };
+    
+    setAgendaItems(prev => [...prev, newAgendaItem]);
+    setIsGenerating(false);
+    toast({
+      title: "Analysis Complete",
+      description: "1 new agenda item has been added.",
+    });
+  };
+
+  const handleAddItem = () => {
+    if (!newItem.title.trim()) {
+      toast({ title: "Error", description: "Please enter a title", variant: "destructive" });
+      return;
+    }
+    
+    const item: AgendaItem = {
+      id: Date.now().toString(),
+      priority: agendaItems.length + 1,
+      title: newItem.title,
+      dsv: newItem.dsv,
+      timestamp: newItem.timestamp || '00:00',
+      description: newItem.description,
+      notes: ''
+    };
+    
+    setAgendaItems(prev => [...prev, item]);
+    setShowNewItem(false);
+    setNewItem({ title: '', timestamp: '', description: '', dsv: 0 });
+    toast({ title: "Item Added", description: "Agenda item has been added." });
+  };
+
+  const handleEditItem = (item: AgendaItem) => {
+    setSelectedItem(item);
+    setShowEditItem(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!selectedItem) return;
+    setAgendaItems(prev => prev.map(i => i.id === selectedItem.id ? selectedItem : i));
+    setShowEditItem(false);
+    toast({ title: "Item Updated", description: "Agenda item has been saved." });
+  };
+
+  const handleDeleteItem = (id: string) => {
+    setAgendaItems(prev => prev.filter(i => i.id !== id));
+    toast({ title: "Item Deleted", description: "Agenda item has been removed." });
+  };
+
+  const handleViewVOD = (timestamp: string) => {
+    toast({
+      title: "Opening VOD",
+      description: `Loading video at timestamp ${timestamp}...`,
+    });
+    navigate('/coach/vod');
+  };
+
+  const handleRunWhatIf = (item: AgendaItem) => {
+    toast({
+      title: "Loading Simulator",
+      description: `Setting up What-If scenario for "${item.title}"...`,
+    });
+    navigate('/coach/what-if');
+  };
+
+  const handleSaveAgenda = async () => {
+    setIsSaving(true);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setIsSaving(false);
+    toast({
+      title: "Agenda Saved",
+      description: "Your changes have been saved successfully.",
+    });
+  };
+
   return (
     <div className="space-y-6">
       <motion.div
@@ -72,11 +227,11 @@ export default function TeamAgenda() {
         </div>
         
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="border-primary/30">
+          <Button onClick={handleExportPDF} variant="outline" className="border-primary/30">
             <Download className="w-4 h-4 mr-2" />
             Export PDF
           </Button>
-          <Button className="bg-primary hover:bg-primary/80">
+          <Button onClick={handleScheduleSession} className="bg-primary hover:bg-primary/80">
             <Calendar className="w-4 h-4 mr-2" />
             Schedule VOD Session
           </Button>
@@ -116,11 +271,26 @@ export default function TeamAgenda() {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-display font-bold text-foreground">AGENDA ITEMS</h2>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10">
-              <Sparkles className="w-4 h-4 mr-2" />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-primary hover:bg-primary/10"
+              onClick={handleAutoGenerate}
+              disabled={isGenerating}
+            >
+              {isGenerating ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4 mr-2" />
+              )}
               Auto-Generate More
             </Button>
-            <Button variant="outline" size="sm" className="border-primary/30">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="border-primary/30"
+              onClick={() => setShowNewItem(true)}
+            >
               <Plus className="w-4 h-4 mr-2" />
               Add Manual Item
             </Button>
@@ -172,20 +342,40 @@ export default function TeamAgenda() {
                   </div>
                   
                   <div className="flex items-center gap-3 mt-4">
-                    <Button variant="outline" size="sm" className="border-primary/30 text-primary">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="border-primary/30 text-primary"
+                      onClick={() => handleViewVOD(item.timestamp)}
+                    >
                       <Video className="w-4 h-4 mr-2" />
                       View in 3D VOD
                     </Button>
                     {item.dsv < 0 && (
-                      <Button variant="outline" size="sm" className="border-primary/30 text-primary">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="border-primary/30 text-primary"
+                        onClick={() => handleRunWhatIf(item)}
+                      >
                         <Sparkles className="w-4 h-4 mr-2" />
                         Run What-If
                       </Button>
                     )}
-                    <Button variant="ghost" size="sm" className="text-muted-foreground">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-muted-foreground"
+                      onClick={() => handleEditItem(item)}
+                    >
                       <Edit3 className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-destructive hover:bg-destructive/10"
+                      onClick={() => handleDeleteItem(item.id)}
+                    >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -206,14 +396,133 @@ export default function TeamAgenda() {
         <Textarea 
           placeholder="Add your notes for this review session..."
           className="min-h-32 bg-secondary/30 border-primary/20 resize-none"
-          defaultValue="Focus on Baron positioning - JAX needs to maintain better proximity to pit. Team coordination on objective calls needs work."
+          value={coachNotes}
+          onChange={(e) => setCoachNotes(e.target.value)}
         />
         <div className="flex justify-end mt-4">
-          <Button className="bg-primary hover:bg-primary/80">
-            Save Agenda
+          <Button 
+            onClick={handleSaveAgenda}
+            disabled={isSaving}
+            className="bg-primary hover:bg-primary/80"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Save Agenda
+              </>
+            )}
           </Button>
         </div>
       </motion.div>
+
+      {/* New Item Dialog */}
+      <Dialog open={showNewItem} onOpenChange={setShowNewItem}>
+        <DialogContent className="bg-card border-primary/30">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Add Agenda Item</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Title</label>
+              <Input 
+                value={newItem.title}
+                onChange={(e) => setNewItem(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="e.g., Baron Contest at 28:30"
+                className="bg-secondary/50 border-primary/20"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">Timestamp</label>
+                <Input 
+                  value={newItem.timestamp}
+                  onChange={(e) => setNewItem(prev => ({ ...prev, timestamp: e.target.value }))}
+                  placeholder="e.g., 28:30"
+                  className="bg-secondary/50 border-primary/20"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">DSV Impact (%)</label>
+                <Input 
+                  type="number"
+                  value={newItem.dsv}
+                  onChange={(e) => setNewItem(prev => ({ ...prev, dsv: parseFloat(e.target.value) || 0 }))}
+                  placeholder="e.g., -15.5"
+                  className="bg-secondary/50 border-primary/20"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Description</label>
+              <Textarea 
+                value={newItem.description}
+                onChange={(e) => setNewItem(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Describe what happened..."
+                className="bg-secondary/50 border-primary/20"
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowNewItem(false)} className="border-primary/30">
+              Cancel
+            </Button>
+            <Button onClick={handleAddItem} className="bg-primary hover:bg-primary/90">
+              Add Item
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Item Dialog */}
+      <Dialog open={showEditItem} onOpenChange={setShowEditItem}>
+        <DialogContent className="bg-card border-primary/30">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Edit Agenda Item</DialogTitle>
+          </DialogHeader>
+          {selectedItem && (
+            <div className="space-y-4 mt-4">
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">Title</label>
+                <Input 
+                  value={selectedItem.title}
+                  onChange={(e) => setSelectedItem(prev => prev ? { ...prev, title: e.target.value } : null)}
+                  className="bg-secondary/50 border-primary/20"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">Description</label>
+                <Textarea 
+                  value={selectedItem.description}
+                  onChange={(e) => setSelectedItem(prev => prev ? { ...prev, description: e.target.value } : null)}
+                  className="bg-secondary/50 border-primary/20"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">Notes</label>
+                <Textarea 
+                  value={selectedItem.notes}
+                  onChange={(e) => setSelectedItem(prev => prev ? { ...prev, notes: e.target.value } : null)}
+                  placeholder="Add notes for this item..."
+                  className="bg-secondary/50 border-primary/20"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowEditItem(false)} className="border-primary/30">
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit} className="bg-primary hover:bg-primary/90">
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

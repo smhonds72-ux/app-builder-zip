@@ -44,6 +44,7 @@ const App = () => (
             <Route path="vod" element={<VODReview />} />
             <Route path="henry" element={<CoachHenry />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="what-if" element={<WhatIfSimulator />} />
             <Route path="simulator" element={<WhatIfSimulator />} />
             <Route path="agenda" element={<TeamAgenda />} />
             <Route path="training" element={<TrainingScheduler />} />

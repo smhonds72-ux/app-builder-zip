@@ -1,4 +1,6 @@
 import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Dumbbell, 
   Calendar, 
@@ -10,13 +12,49 @@ import {
   Edit3,
   Trash2,
   CheckCircle2,
-  Circle
+  Circle,
+  Play
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 
-const activeDrills = [
+interface Drill {
+  id: string;
+  title: string;
+  assignedTo: string[];
+  status: 'in_progress' | 'not_started' | 'completed';
+  linkedMatch: string;
+  createdAt: string;
+}
+
+interface Session {
+  id: string;
+  match: string;
+  date: string;
+  time: string;
+  attendees: string[];
+  agendaItems: number;
+}
+
+const initialDrills: Drill[] = [
   {
     id: '1',
     title: 'Baron Positioning Drill',
@@ -43,7 +81,7 @@ const activeDrills = [
   }
 ];
 
-const upcomingSessions = [
+const initialSessions: Session[] = [
   {
     id: '1',
     match: 'Cloud9 vs TL',
@@ -68,7 +106,109 @@ const completedSessions = [
   { id: '3', match: 'vs FlyQuest', date: 'Jan 22', hasRecording: false }
 ];
 
+const players = ['All', 'Blaber', 'Fudge', 'Jojopyun', 'Berserker', 'Zven'];
+
 export default function TrainingScheduler() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [drills, setDrills] = useState<Drill[]>(initialDrills);
+  const [sessions, setSessions] = useState<Session[]>(initialSessions);
+  const [showNewDrill, setShowNewDrill] = useState(false);
+  const [showNewSession, setShowNewSession] = useState(false);
+  const [showDrillProgress, setShowDrillProgress] = useState(false);
+  const [selectedDrill, setSelectedDrill] = useState<Drill | null>(null);
+  const [newDrill, setNewDrill] = useState({
+    title: '',
+    assignedTo: 'All',
+    linkedMatch: '',
+  });
+  const [newSession, setNewSession] = useState({
+    match: '',
+    date: '',
+    time: '',
+  });
+
+  const handleCreateDrill = () => {
+    if (!newDrill.title.trim()) {
+      toast({ title: "Error", description: "Please enter a drill title", variant: "destructive" });
+      return;
+    }
+    
+    const drill: Drill = {
+      id: Date.now().toString(),
+      title: newDrill.title,
+      assignedTo: [newDrill.assignedTo],
+      status: 'not_started',
+      linkedMatch: newDrill.linkedMatch || 'General Training',
+      createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    };
+    
+    setDrills(prev => [drill, ...prev]);
+    setShowNewDrill(false);
+    setNewDrill({ title: '', assignedTo: 'All', linkedMatch: '' });
+    toast({ title: "Drill Created", description: `"${drill.title}" has been created.` });
+  };
+
+  const handleDeleteDrill = (id: string) => {
+    setDrills(prev => prev.filter(d => d.id !== id));
+    toast({ title: "Drill Deleted", description: "The drill has been removed." });
+  };
+
+  const handleViewProgress = (drill: Drill) => {
+    setSelectedDrill(drill);
+    setShowDrillProgress(true);
+  };
+
+  const handleStartDrill = (id: string) => {
+    setDrills(prev => prev.map(d => d.id === id ? { ...d, status: 'in_progress' as const } : d));
+    toast({ title: "Drill Started", description: "The drill is now in progress." });
+  };
+
+  const handleCompleteDrill = (id: string) => {
+    setDrills(prev => prev.map(d => d.id === id ? { ...d, status: 'completed' as const } : d));
+    setShowDrillProgress(false);
+    toast({ title: "Drill Completed", description: "Great work! The drill has been marked as complete." });
+  };
+
+  const handleScheduleSession = () => {
+    if (!newSession.match.trim() || !newSession.date.trim()) {
+      toast({ title: "Error", description: "Please fill in required fields", variant: "destructive" });
+      return;
+    }
+    
+    const session: Session = {
+      id: Date.now().toString(),
+      match: newSession.match,
+      date: newSession.date,
+      time: newSession.time || '10:00 AM',
+      attendees: ['Coach'],
+      agendaItems: 0
+    };
+    
+    setSessions(prev => [session, ...prev]);
+    setShowNewSession(false);
+    setNewSession({ match: '', date: '', time: '' });
+    toast({ title: "Session Scheduled", description: `VOD session for "${session.match}" has been scheduled.` });
+  };
+
+  const handleJoinSession = (session: Session) => {
+    toast({ title: "Joining Session", description: `Joining VOD review for ${session.match}...` });
+    navigate('/coach/vod');
+  };
+
+  const handleEditSession = (session: Session) => {
+    toast({ title: "Edit Session", description: `Opening editor for ${session.match}...` });
+  };
+
+  const handleWatchRecording = (match: string) => {
+    toast({ title: "Loading Recording", description: `Loading recording for ${match}...` });
+    navigate('/coach/vod');
+  };
+
+  const handleAddEvent = () => {
+    toast({ title: "Add Event", description: "Calendar event creation coming soon!" });
+  };
+
   return (
     <div className="space-y-6">
       <motion.div
@@ -105,14 +245,14 @@ export default function TrainingScheduler() {
         <TabsContent value="drills" className="mt-6 space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-display font-bold text-foreground">ACTIVE DRILLS</h2>
-            <Button className="bg-primary hover:bg-primary/80">
+            <Button onClick={() => setShowNewDrill(true)} className="bg-primary hover:bg-primary/80">
               <Plus className="w-4 h-4 mr-2" />
               Create New Drill
             </Button>
           </div>
 
           <div className="space-y-4">
-            {activeDrills.map((drill, index) => (
+            {drills.filter(d => d.status !== 'completed').map((drill, index) => (
               <motion.div
                 key={drill.id}
                 initial={{ opacity: 0, x: -20 }}
@@ -150,15 +290,41 @@ export default function TrainingScheduler() {
                     )}>
                       {drill.status === 'in_progress' ? 'IN PROGRESS' : 'NOT STARTED'}
                     </span>
-                    <Button variant="ghost" size="icon">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => toast({ title: "Edit Drill", description: "Drill editor coming soon!" })}
+                    >
                       <Edit3 className="w-4 h-4 text-muted-foreground" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="text-destructive hover:bg-destructive/10"
+                      onClick={() => handleDeleteDrill(drill.id)}
+                    >
                       <Trash2 className="w-4 h-4" />
                     </Button>
-                    <Button variant="outline" size="sm" className="border-primary/30">
-                      View Progress <ChevronRight className="w-4 h-4 ml-1" />
-                    </Button>
+                    {drill.status === 'not_started' ? (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="border-primary/30"
+                        onClick={() => handleStartDrill(drill.id)}
+                      >
+                        <Play className="w-4 h-4 mr-1" />
+                        Start
+                      </Button>
+                    ) : (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="border-primary/30"
+                        onClick={() => handleViewProgress(drill)}
+                      >
+                        View Progress <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -169,14 +335,14 @@ export default function TrainingScheduler() {
         <TabsContent value="vod" className="mt-6 space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-display font-bold text-foreground">UPCOMING SESSIONS</h2>
-            <Button className="bg-primary hover:bg-primary/80">
+            <Button onClick={() => setShowNewSession(true)} className="bg-primary hover:bg-primary/80">
               <Plus className="w-4 h-4 mr-2" />
               Schedule New Session
             </Button>
           </div>
 
           <div className="space-y-4">
-            {upcomingSessions.map((session, index) => (
+            {sessions.map((session, index) => (
               <motion.div
                 key={session.id}
                 initial={{ opacity: 0, x: -20 }}
@@ -205,10 +371,17 @@ export default function TrainingScheduler() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" className="border-primary/30">
+                    <Button 
+                      variant="outline" 
+                      className="border-primary/30"
+                      onClick={() => handleEditSession(session)}
+                    >
                       Edit
                     </Button>
-                    <Button className="bg-primary hover:bg-primary/80">
+                    <Button 
+                      className="bg-primary hover:bg-primary/80"
+                      onClick={() => handleJoinSession(session)}
+                    >
                       Join Session
                     </Button>
                   </div>
@@ -231,7 +404,12 @@ export default function TrainingScheduler() {
                     <span className="text-sm text-muted-foreground">{session.date}</span>
                   </div>
                   {session.hasRecording && (
-                    <Button variant="ghost" size="sm" className="text-primary">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-primary"
+                      onClick={() => handleWatchRecording(session.match)}
+                    >
                       Watch Recording
                     </Button>
                   )}
@@ -252,13 +430,146 @@ export default function TrainingScheduler() {
             <p className="text-muted-foreground mb-6">
               Interactive calendar coming soon. View and manage all team events in one place.
             </p>
-            <Button className="bg-primary hover:bg-primary/80">
+            <Button onClick={handleAddEvent} className="bg-primary hover:bg-primary/80">
               <Plus className="w-4 h-4 mr-2" />
               Add Event
             </Button>
           </motion.div>
         </TabsContent>
       </Tabs>
+
+      {/* New Drill Dialog */}
+      <Dialog open={showNewDrill} onOpenChange={setShowNewDrill}>
+        <DialogContent className="bg-card border-primary/30">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Create New Drill</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Drill Title</label>
+              <Input 
+                value={newDrill.title}
+                onChange={(e) => setNewDrill(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="e.g., Baron Positioning Drill"
+                className="bg-secondary/50 border-primary/20"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Assign To</label>
+              <Select value={newDrill.assignedTo} onValueChange={(v) => setNewDrill(prev => ({ ...prev, assignedTo: v }))}>
+                <SelectTrigger className="bg-secondary/50 border-primary/20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {players.map(p => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Linked To (optional)</label>
+              <Input 
+                value={newDrill.linkedMatch}
+                onChange={(e) => setNewDrill(prev => ({ ...prev, linkedMatch: e.target.value }))}
+                placeholder="e.g., Match vs TL, Baron contest"
+                className="bg-secondary/50 border-primary/20"
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowNewDrill(false)} className="border-primary/30">
+              Cancel
+            </Button>
+            <Button onClick={handleCreateDrill} className="bg-primary hover:bg-primary/90">
+              Create Drill
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Session Dialog */}
+      <Dialog open={showNewSession} onOpenChange={setShowNewSession}>
+        <DialogContent className="bg-card border-primary/30">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Schedule VOD Session</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">Session Title</label>
+              <Input 
+                value={newSession.match}
+                onChange={(e) => setNewSession(prev => ({ ...prev, match: e.target.value }))}
+                placeholder="e.g., Cloud9 vs TL Review"
+                className="bg-secondary/50 border-primary/20"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">Date</label>
+                <Input 
+                  type="date"
+                  value={newSession.date}
+                  onChange={(e) => setNewSession(prev => ({ ...prev, date: e.target.value }))}
+                  className="bg-secondary/50 border-primary/20"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">Time</label>
+                <Input 
+                  type="time"
+                  value={newSession.time}
+                  onChange={(e) => setNewSession(prev => ({ ...prev, time: e.target.value }))}
+                  className="bg-secondary/50 border-primary/20"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowNewSession(false)} className="border-primary/30">
+              Cancel
+            </Button>
+            <Button onClick={handleScheduleSession} className="bg-primary hover:bg-primary/90">
+              Schedule Session
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Drill Progress Dialog */}
+      <Dialog open={showDrillProgress} onOpenChange={setShowDrillProgress}>
+        <DialogContent className="bg-card border-primary/30">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">{selectedDrill?.title}</DialogTitle>
+          </DialogHeader>
+          {selectedDrill && (
+            <div className="space-y-4 mt-4">
+              <div className="p-4 rounded-lg bg-secondary/30">
+                <p className="text-sm text-muted-foreground">Assigned to</p>
+                <p className="font-medium text-primary">{selectedDrill.assignedTo.join(', ')}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-secondary/30">
+                <p className="text-sm text-muted-foreground">Linked to</p>
+                <p className="font-medium text-foreground">{selectedDrill.linkedMatch}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                <p className="text-sm text-muted-foreground mb-2">Progress</p>
+                <div className="w-full bg-secondary rounded-full h-3">
+                  <div className="bg-primary h-3 rounded-full w-2/3 transition-all" />
+                </div>
+                <p className="text-sm text-primary mt-2">67% Complete</p>
+              </div>
+              <Button 
+                onClick={() => handleCompleteDrill(selectedDrill.id)}
+                className="w-full bg-status-success hover:bg-status-success/90"
+              >
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Mark as Complete
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
