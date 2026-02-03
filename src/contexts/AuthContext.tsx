@@ -117,6 +117,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
     });
 
+    if (error) {
+      console.error('Sign in error:', error.message, error.status);
+    }
+
     return { error };
   };
 
