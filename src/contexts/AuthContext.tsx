@@ -106,12 +106,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     });
 
-    console.log('Signup response:', { data, error });
+    console.log('Full signup response:', JSON.stringify({ data, error }, null, 2));
+    console.log('User ID:', data?.user?.id);
+    console.log('User email confirmed:', data?.user?.user_metadata);
+    console.log('Session:', data?.session);
 
     if (error) {
-      console.error('Sign up error:', error.message, error);
+      console.error('Sign up ERROR:', error.message, error.code, error);
+    } else if (!data?.user) {
+      console.error('Signup returned no user data!');
     } else {
-      console.log('Signup successful. User:', data?.user?.id);
+      console.log('Signup successful. User:', data?.user?.id, 'Email:', data?.user?.email);
     }
 
     return { error };
