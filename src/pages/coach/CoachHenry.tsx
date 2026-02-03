@@ -1,9 +1,11 @@
 import { motion } from 'framer-motion';
-import { MessageSquare, Mic, Send, Sparkles, Brain, TrendingUp } from 'lucide-react';
-import { useState } from 'react';
+import { Mic, Send, Sparkles, Brain, TrendingUp, Loader2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { chatWithHenry, ChatMessage } from '@/lib/henryAI';
+import { useDataMode } from '@/contexts/DataContext';
 
 interface Message {
   id: string;
@@ -20,6 +22,7 @@ const suggestedQuestions = [
 ];
 
 export default function CoachHenry() {
+  const { isLiveMode } = useDataMode();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -29,9 +32,19 @@ export default function CoachHenry() {
     },
   ]);
   const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -41,18 +54,44 @@ export default function CoachHenry() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const userInput = input;
     setInput('');
+    setIsLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: "I'm analyzing your request. Based on recent match data, I can see several interesting patterns in your team's performance. Let me break this down for you...\n\nThis is a demo response. In production, this would be connected to the AI backend for real-time analysis.",
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, aiMessage]);
-    }, 1000);
+    // Create a placeholder message for streaming
+    const aiMessageId = (Date.now() + 1).toString();
+    setMessages(prev => [...prev, {
+      id: aiMessageId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+    }]);
+
+    try {
+      // Build chat history for context
+      const chatHistory: ChatMessage[] = messages
+        .filter(m => m.role !== 'assistant' || m.content !== '')
+        .map(m => ({ role: m.role, content: m.content }));
+      chatHistory.push({ role: 'user', content: userInput });
+
+      // Use streaming to update the message in real-time
+      await chatWithHenry(chatHistory, (streamedText) => {
+        setMessages(prev => prev.map(m => 
+          m.id === aiMessageId 
+            ? { ...m, content: streamedText }
+            : m
+        ));
+      });
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      setMessages(prev => prev.map(m => 
+        m.id === aiMessageId 
+          ? { ...m, content: "I apologize, but I'm having trouble connecting right now. Please try again in a moment." }
+          : m
+      ));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -117,13 +156,23 @@ export default function CoachHenry() {
                     ? "bg-secondary/50 border border-primary/20" 
                     : "bg-primary/20 border border-primary/30"
                 )}>
-                  <p className="text-foreground whitespace-pre-wrap">{message.content}</p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {message.timestamp.toLocaleTimeString()}
-                  </p>
+                  {message.content ? (
+                    <p className="text-foreground whitespace-pre-wrap">{message.content}</p>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                      <span className="text-muted-foreground text-sm">Henry is thinking...</span>
+                    </div>
+                  )}
+                  {message.content && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {message.timestamp.toLocaleTimeString()}
+                    </p>
+                  )}
                 </div>
               </motion.div>
             ))}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Input Area */}
@@ -135,12 +184,21 @@ export default function CoachHenry() {
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
                 placeholder="Ask Henry anything about your team..."
                 className="flex-1 bg-secondary/50 border-primary/20"
+                disabled={isLoading}
               />
-              <Button onClick={handleSend} className="bg-primary hover:bg-primary/90">
-                <Send className="w-4 h-4" />
+              <Button 
+                onClick={handleSend} 
+                className="bg-primary hover:bg-primary/90"
+                disabled={isLoading || !input.trim()}
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
               </Button>
             </div>
           </div>

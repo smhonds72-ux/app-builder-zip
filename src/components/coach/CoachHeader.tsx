@@ -1,4 +1,4 @@
-import { Bell, Search, User, Menu } from 'lucide-react';
+import { Bell, Search, User, Menu, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useSidebar } from '@/components/ui/sidebar';
@@ -10,9 +10,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { DataModeToggle } from '@/components/DataModeToggle';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export function CoachHeader() {
   const { toggleSidebar, state } = useSidebar();
+  const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   return (
     <header className="h-16 border-b border-primary/20 bg-card/30 backdrop-blur-xl flex items-center justify-between px-6 sticky top-0 z-50">
@@ -42,6 +52,11 @@ export function CoachHeader() {
 
       {/* Right section */}
       <div className="flex items-center gap-3">
+        {/* Data Mode Toggle */}
+        <div className="hidden lg:block">
+          <DataModeToggle />
+        </div>
+
         {/* System Status */}
         <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-status-success/10 border border-status-success/30">
           <div className="w-2 h-2 rounded-full bg-status-success animate-pulse" />
@@ -69,8 +84,8 @@ export function CoachHeader() {
                 <User className="w-4 h-4 text-primary-foreground" />
               </div>
               <div className="hidden md:flex flex-col items-start">
-                <span className="text-sm font-medium text-foreground">Coach Demo</span>
-                <span className="text-xs text-muted-foreground">Head Coach</span>
+                <span className="text-sm font-medium text-foreground">{profile?.full_name || 'Coach'}</span>
+                <span className="text-xs text-muted-foreground">{profile?.team_name || 'Head Coach'}</span>
               </div>
             </Button>
           </DropdownMenuTrigger>
@@ -86,8 +101,9 @@ export function CoachHeader() {
             <DropdownMenuSeparator className="bg-primary/20" />
             <DropdownMenuItem 
               className="hover:bg-destructive/10 text-destructive cursor-pointer"
-              onClick={() => window.location.href = '/'}
+              onClick={handleSignOut}
             >
+              <LogOut className="w-4 h-4 mr-2" />
               Sign Out
             </DropdownMenuItem>
           </DropdownMenuContent>

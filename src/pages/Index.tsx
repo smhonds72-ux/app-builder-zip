@@ -41,11 +41,11 @@ const FloatingParticles = () => {
 
 const Index = () => {
   const handleCoachClick = () => {
-    window.location.href = '/coach';
+    window.location.href = '/auth/login?redirect=coach';
   };
 
   const handlePlayerClick = () => {
-    window.location.href = '/player';
+    window.location.href = '/auth/login?redirect=player';
   };
 
   return (
