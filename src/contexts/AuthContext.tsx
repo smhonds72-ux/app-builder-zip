@@ -91,11 +91,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     role: UserRole,
     teamName?: string
   ) => {
-    // Use correct redirect URL for email confirmation
-    const redirectUrl = 'http://localhost:8080/auth/callback';
-
     console.log('Attempting signup with:', { email, fullName, role });
 
+    // Don't send redirect URL - let Supabase handle it based on its settings
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -105,7 +103,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role,
           team_name: teamName || null,
         },
-        emailRedirectTo: redirectUrl,
       },
     });
 
