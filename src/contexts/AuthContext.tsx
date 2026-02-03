@@ -91,6 +91,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     role: UserRole,
     teamName?: string
   ) => {
+    const redirectUrl = typeof window !== 'undefined'
+      ? `${window.location.origin}/auth/callback`
+      : 'http://localhost:8080/auth/callback';
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -100,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role,
           team_name: teamName || null,
         },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: redirectUrl,
       },
     });
 
