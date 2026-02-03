@@ -22,18 +22,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    if (error) {
-      console.error('Error fetching profile:', error);
+      if (error) {
+        // Profile doesn't exist yet - return null and let it be created
+        if (error.code === 'PGRST116') {
+          console.log('Profile not found for user:', userId);
+          return null;
+        }
+        console.error('Error fetching profile:', error.message);
+        return null;
+      }
+
+      return data as Profile;
+    } catch (err) {
+      console.error('Unexpected error fetching profile:', err);
       return null;
     }
-
-    return data as Profile;
   };
 
   const refreshProfile = async () => {
@@ -81,7 +91,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     role: UserRole,
     teamName?: string
   ) => {
-    const { error } = await supabase.auth.signUp({
+    console.log('Attempting signup with:', { email, fullName, role });
+
+    // Don't send redirect URL - let Supabase handle it based on its settings
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -90,9 +103,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role,
           team_name: teamName || null,
         },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
+
+    console.log('Full signup response:', JSON.stringify({ data, error }, null, 2));
+    console.log('User ID:', data?.user?.id);
+    console.log('User email confirmed:', data?.user?.user_metadata);
+    console.log('Session:', data?.session);
+
+    if (error) {
+      console.error('Sign up ERROR:', error.message, error.code, error);
+    } else if (!data?.user) {
+      console.error('Signup returned no user data!');
+    } else {
+      console.log('Signup successful. User:', data?.user?.id, 'Email:', data?.user?.email);
+    }
 
     return { error };
   };
@@ -102,6 +127,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
     });
+
+    if (error) {
+      console.error('Sign in error:', error.message, error.status);
+    }
 
     return { error };
   };

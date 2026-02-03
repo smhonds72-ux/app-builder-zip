@@ -42,7 +42,8 @@ const Register = () => {
       const { error: authError } = await signUp(email, password, fullName, role, teamName || undefined);
 
       if (authError) {
-        setError(authError.message);
+        console.error('Auth error:', authError);
+        setError(authError.message || 'Sign up failed');
         setIsLoading(false);
         return;
       }
