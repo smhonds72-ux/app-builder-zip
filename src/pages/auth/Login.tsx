@@ -13,37 +13,43 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isManualLogin, setIsManualLogin] = useState(false);
   const { signIn, user, profile, loading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectPath = searchParams.get('redirect');
 
-  // Redirect if already logged in
+  // Redirect only after successful login (not on page load)
   useEffect(() => {
-    if (!loading && user && profile) {
+    if (!loading && user && profile && isManualLogin) {
+      console.log('Login successful, redirecting to:', profile.role === 'coach' ? '/coach' : '/player');
       const destination = redirectPath || (profile.role === 'coach' ? '/coach' : '/player');
       navigate(destination);
     }
-  }, [user, profile, loading, navigate, redirectPath]);
+  }, [user, profile, loading, navigate, redirectPath, isManualLogin]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
+    setIsManualLogin(true);
 
     try {
       const { error: authError } = await signIn(email, password);
 
       if (authError) {
-        setError(authError.message);
+        setError(authError);
         setIsLoading(false);
+        setIsManualLogin(false);
         return;
       }
 
       // Navigation will happen via the useEffect when profile is loaded
+      console.log('Sign in completed, waiting for redirect...');
     } catch {
       setError('An unexpected error occurred');
       setIsLoading(false);
+      setIsManualLogin(false);
     }
   };
 
@@ -168,6 +174,53 @@ const Login = () => {
                 )}
               </Button>
             </form>
+
+            {/* Quick Access for Testing */}
+            <div className="mt-6 pt-6 border-t border-primary/20">
+              <p className="text-center text-muted-foreground text-sm mb-4 font-body">
+                Quick Access (Testing)
+              </p>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <Button
+                  onClick={async () => {
+                    setEmail('coach@test.com');
+                    setPassword('coach123');
+                    setIsManualLogin(true);
+                    
+                    // Wait a moment for state to update
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    // Manually trigger sign in
+                    const result = await signIn('coach@test.com', 'coach123');
+                    console.log('Manual sign in result:', result);
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="bg-secondary/50 border-primary/30 hover:bg-primary/20 hover:border-primary/50 h-10 text-xs"
+                >
+                  Coach Portal
+                </Button>
+                <Button
+                  onClick={async () => {
+                    setEmail('player@test.com');
+                    setPassword('player123');
+                    setIsManualLogin(true);
+                    
+                    // Wait a moment for state to update
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    // Manually trigger sign in
+                    const result = await signIn('player@test.com', 'player123');
+                    console.log('Manual sign in result:', result);
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="bg-secondary/50 border-primary/30 hover:bg-primary/20 hover:border-primary/50 h-10 text-xs"
+                >
+                  Player Portal
+                </Button>
+              </div>
+            </div>
 
             {/* Register Link */}
             <p className="mt-6 text-center text-muted-foreground font-body">

@@ -12,6 +12,14 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   const { user, profile, loading } = useAuth();
   const location = useLocation();
 
+  console.log('ProtectedRoute check:', { 
+    path: location.pathname, 
+    user: !!user, 
+    profile: profile?.role, 
+    loading, 
+    allowedRoles 
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -25,11 +33,13 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
 
   if (!user) {
     // Redirect to login with return URL
+    console.log('No user, redirecting to login');
     return <Navigate to={`/auth/login?redirect=${location.pathname}`} replace />;
   }
 
   // Check role-based access
   if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
+    console.log('Role mismatch, redirecting to appropriate portal');
     // Redirect to appropriate portal based on actual role
     if (profile.role === 'coach') {
       return <Navigate to="/coach" replace />;
@@ -38,5 +48,6 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     }
   }
 
+  console.log('Access granted, rendering children');
   return <>{children}</>;
 }

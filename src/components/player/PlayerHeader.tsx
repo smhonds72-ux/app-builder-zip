@@ -20,7 +20,8 @@ export function PlayerHeader() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/');
+    // Use replace to prevent back navigation and ensure clean state
+    navigate('/auth/login', { replace: true });
   };
 
   const initials = profile?.full_name

@@ -305,6 +305,47 @@ const Register = () => {
               </Button>
             </form>
 
+            {/* Quick Access for Testing */}
+            <div className="mt-6 pt-6 border-t border-primary/20">
+              <p className="text-center text-muted-foreground text-sm mb-4 font-body">
+                Quick Access (Testing)
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  onClick={() => {
+                    setEmail('coach@test.com');
+                    setPassword('coach123');
+                    setConfirmPassword('coach123');
+                    setFullName('Test Coach');
+                    setTeamName('Test Team');
+                    setRole('coach');
+                    setTimeout(() => handleSubmit({ preventDefault: () => {} } as React.FormEvent), 100);
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="bg-secondary/50 border-primary/30 hover:bg-primary/20 hover:border-primary/50 h-10 text-xs"
+                >
+                  Quick Coach
+                </Button>
+                <Button
+                  onClick={() => {
+                    setEmail('player@test.com');
+                    setPassword('player123');
+                    setConfirmPassword('player123');
+                    setFullName('Test Player');
+                    setTeamName('Test Team');
+                    setRole('player');
+                    setTimeout(() => handleSubmit({ preventDefault: () => {} } as React.FormEvent), 100);
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="bg-secondary/50 border-primary/30 hover:bg-primary/20 hover:border-primary/50 h-10 text-xs"
+                >
+                  Quick Player
+                </Button>
+              </div>
+            </div>
+
             {/* Login Link */}
             <p className="mt-6 text-center text-muted-foreground font-body">
               Already have an account?{' '}

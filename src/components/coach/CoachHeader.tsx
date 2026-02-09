@@ -21,7 +21,8 @@ export function CoachHeader() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/');
+    // Use replace to prevent back navigation and ensure clean state
+    navigate('/auth/login', { replace: true });
   };
 
   return (
