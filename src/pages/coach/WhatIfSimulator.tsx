@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import { 
   Sparkles, 
   ArrowRight, 
@@ -8,9 +9,11 @@ import {
   Play,
   RotateCcw,
   Save,
-  Dumbbell
+  Dumbbell,
+  Brain,
+  Activity,
+  Gauge
 } from 'lucide-react';
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { dataService } from '@/lib/dataService';
+import { useDataMode } from '@/contexts/DataContext';
 
 const criticalEvents = [
   { id: '1', name: 'Baron Contest at 28:30', dsv: -18.5, match: 'vs Team Liquid' },
@@ -36,12 +41,61 @@ const alternativeDecisions = [
 ];
 
 export default function WhatIfSimulator() {
+  const { isLiveMode } = useDataMode();
   const [selectedEvent, setSelectedEvent] = useState(criticalEvents[0]);
   const [selectedAlternative, setSelectedAlternative] = useState<string | null>(null);
   const [simulated, setSimulated] = useState(false);
+  const [teamMetrics, setTeamMetrics] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
-  const actualWinProb = 42.0;
-  const alternativeWinProb = 60.2;
+  useEffect(() => {
+    const fetchSimulationData = async () => {
+      if (isLiveMode) {
+        try {
+          setLoading(true);
+          console.log('🧮 What-If Simulator: Fetching enhanced data...');
+          
+          const enhancedTeamStats = await dataService.getEnhancedTeamStats();
+          
+          setTeamMetrics(enhancedTeamStats);
+          console.log('✅ What-If Simulator: Enhanced data loaded successfully');
+        } catch (error) {
+          console.error('❌ What-If Simulator: Error fetching enhanced data:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchSimulationData();
+  }, [isLiveMode]);
+
+  // Calculate actual win probability based on live data
+  const actualWinProb = teamMetrics ? 
+    Math.round((1 - teamMetrics.dsvTeam) * 50 + teamMetrics.opeTeam * 30) : 42.0;
+  
+  // Calculate alternative win probability based on selected alternative
+  const getAlternativeWinProb = (alternativeId: string) => {
+    if (!teamMetrics) return 60.2;
+    
+    // Base probabilities for different alternatives
+    const baseProbabilities: { [key: string]: number } = {
+      '1': 65.5, // Concede Baron, take mid inhibitor
+      '2': 58.3, // Split push bot lane  
+      '3': 72.1, // Reset and defend base
+      '4': 45.8, // Contest with only 4 players
+    };
+    
+    // Adjust based on team metrics
+    const baseProb = baseProbabilities[alternativeId] || 60.2;
+    const adjustment = (teamMetrics.tempoLeakTeam * -10) + (teamMetrics.opeTeam * 5);
+    
+    return Math.max(20, Math.min(85, baseProb + adjustment));
+  };
+  
+  const alternativeWinProb = selectedAlternative ? 
+    getAlternativeWinProb(selectedAlternative) : 60.2;
+  
   const delta = alternativeWinProb - actualWinProb;
 
   const handleSimulate = () => {
@@ -66,13 +120,20 @@ export default function WhatIfSimulator() {
           </h1>
           <p className="text-muted-foreground mt-1">
             Explore alternative decisions and their impact on win probability
+            {isLiveMode && teamMetrics && (
+              <span className="ml-2 text-xs text-primary font-mono">
+                (LIVE DATA: DSV {teamMetrics.dsvTeam.toFixed(2)}, OPE {(teamMetrics.opeTeam * 100).toFixed(0)}%)
+              </span>
+            )}
           </p>
         </div>
         
-        <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/30">
-          <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-          <span className="text-sm font-mono text-primary">AI-POWERED PREDICTIONS</span>
-        </div>
+        {isLiveMode && (
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/10 border border-green-500/30">
+            <Brain className="w-4 h-4 text-green-400" />
+            <span className="text-sm font-mono text-green-400">LIVE CALCULATIONS ACTIVE</span>
+          </div>
+        )}
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -178,19 +239,64 @@ export default function WhatIfSimulator() {
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="text-center p-6 rounded-xl bg-destructive/10 border border-destructive/30">
-              <h3 className="text-sm font-mono text-muted-foreground mb-2">ACTUAL DECISION</h3>
+              <h3 className="text-sm font-mono text-muted-foreground mb-2">
+                ACTUAL DECISION
+                {isLiveMode && teamMetrics && (
+                  <span className="block text-xs text-primary mt-1">
+                    Based on DSV: {teamMetrics.dsvTeam.toFixed(2)}, OPE: {(teamMetrics.opeTeam * 100).toFixed(0)}%
+                  </span>
+                )}
+              </h3>
               <p className="text-5xl font-display font-bold text-destructive">{actualWinProb}%</p>
-              <p className="text-sm text-muted-foreground mt-2">Win Probability After</p>
+              <p className="text-sm text-muted-foreground mt-2">Win Probability</p>
             </div>
             
             <div className="flex items-center justify-center">
               <ArrowRight className="w-10 h-10 text-primary animate-pulse" />
+              {isLiveMode && (
+                <div className="text-xs text-primary font-mono text-center mt-2">
+                  Δ = {delta > 0 ? '+' : ''}{delta.toFixed(1)}%
+                  <br />
+                  <span className={cn(
+                    "text-xs",
+                    delta > 0 ? "text-status-success" : 
+                    delta < 0 ? "text-destructive" : "text-muted-foreground"
+                  )}>
+                    {delta > 0 ? 'IMPROVEMENT' : delta < 0 ? 'RISK' : 'NEUTRAL'}
+                  </span>
+                </div>
+              )}
             </div>
             
             <div className="text-center p-6 rounded-xl bg-status-success/10 border border-status-success/30">
-              <h3 className="text-sm font-mono text-muted-foreground mb-2">ALTERNATIVE SCENARIO</h3>
+              <h3 className="text-sm font-mono text-muted-foreground mb-2">
+                ALTERNATIVE SCENARIO
+                {isLiveMode && selectedAlternative && teamMetrics && (
+                  <span className="block text-xs text-primary mt-1">
+                    {alternativeDecisions.find(alt => alt.id === selectedAlternative)?.name}
+                  </span>
+                )}
+              </h3>
               <p className="text-5xl font-display font-bold text-status-success">{alternativeWinProb}%</p>
-              <p className="text-sm text-muted-foreground mt-2">Win Probability After</p>
+              <p className="text-sm text-muted-foreground mt-2">Win Probability</p>
+              {isLiveMode && (
+                <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <div className="text-xs text-primary font-mono">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Brain className="w-3 h-3" />
+                      <span>DSV Impact: {(selectedAlternative ? getAlternativeWinProb(selectedAlternative) - 60.2 : 0).toFixed(1)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Activity className="w-3 h-3" />
+                      <span>OPE Multiplier: {teamMetrics ? (teamMetrics.opeTeam * 1.2).toFixed(2) : '1.00'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Gauge className="w-3 h-3" />
+                      <span>Tempo Factor: {teamMetrics ? (1 - teamMetrics.tempoLeakTeam).toFixed(2) : '1.00'}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           

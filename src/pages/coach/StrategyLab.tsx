@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useDataMode } from '@/contexts/DataContext';
 
 interface Strategy {
   id: string;
@@ -81,6 +82,7 @@ const priorityColors = {
 export default function StrategyLab() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isLiveMode } = useDataMode();
   const [strategies, setStrategies] = useState<Strategy[]>(initialStrategies);
   const [draftNotes, setDraftNotes] = useState<DraftNote[]>(initialDraftNotes);
   const [filter, setFilter] = useState<'All' | 'Active' | 'Testing'>('All');

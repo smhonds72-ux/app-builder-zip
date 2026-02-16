@@ -1,10 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_URL.includes('placeholder')) {
+  console.warn('⚠️ Supabase environment variables are missing or using placeholders.');
+  console.log('Current URL hint:', import.meta.env.VITE_SUPABASE_URL?.substring(0, 12) + '...');
+} else {
+  console.log('✅ Supabase client initialized with project:', import.meta.env.VITE_SUPABASE_URL.substring(0, 20) + '...');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);

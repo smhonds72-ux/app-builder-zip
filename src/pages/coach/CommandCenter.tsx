@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { 
   Trophy, 
   Users, 
@@ -7,7 +8,10 @@ import {
   TrendingUp, 
   Clock,
   Zap,
-  AlertTriangle
+  AlertTriangle,
+  Brain,
+  Activity,
+  Gauge
 } from 'lucide-react';
 import { MetricCard } from '@/components/coach/MetricCard';
 import { TeamStatusCard } from '@/components/coach/TeamStatusCard';
@@ -15,8 +19,10 @@ import { RecentMatchesCard } from '@/components/coach/RecentMatchesCard';
 import { QuickActionsCard } from '@/components/coach/QuickActionsCard';
 import { PerformanceChart } from '@/components/coach/PerformanceChart';
 import { Button } from '@/components/ui/button';
+import { dataService } from '@/lib/dataService';
+import { useDataMode } from '@/contexts/DataContext';
 
-// Mock data
+// Mock data for fallback
 const mockPlayers = [
   { id: '1', name: 'Blaber', role: 'Jungle', status: 'in-game' as const, game: 'LoL Ranked' },
   { id: '2', name: 'Fudge', role: 'Top', status: 'online' as const },
@@ -42,6 +48,70 @@ const performanceData = [
 
 export default function CommandCenter() {
   const navigate = useNavigate();
+  const { isLiveMode } = useDataMode();
+  const [teamStats, setTeamStats] = useState(null);
+  const [playerStats, setPlayerStats] = useState([]);
+  const [recentMatches, setRecentMatches] = useState([]);
+  const [performanceDataState, setPerformanceDataState] = useState(performanceData);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        console.log('📊 Command Center: Fetching enhanced data...');
+        
+        // Use comprehensive stats when in live mode
+        const comprehensiveStats = isLiveMode ? await dataService.getComprehensiveStats() : null;
+        
+        const [teamData, playersData, matchesData, perfData] = await Promise.all([
+          comprehensiveStats ? null : dataService.getTeamStats(),
+          comprehensiveStats ? null : dataService.getPlayerStats(),
+          dataService.getRecentMatches(3),
+          dataService.getPerformanceData()
+        ]);
+
+        // If live mode with comprehensive stats, extract data from it
+        if (comprehensiveStats) {
+          // Extract team stats from comprehensive data
+          const enhancedTeamData = {
+            winRate: comprehensiveStats.teams.length > 0 
+              ? (comprehensiveStats.teams.find(t => t.won)?.score || 0) / 13 * 100
+              : 0,
+            avgKD: comprehensiveStats.players.length > 0
+              ? comprehensiveStats.players.reduce((sum, p) => sum + parseFloat(p.kd), 0) / comprehensiveStats.players.length
+              : 0,
+            clutchRate: comprehensiveStats.analytics.teamAnalytics.length > 0
+              ? parseFloat(comprehensiveStats.analytics.teamAnalytics[0].ope)
+              : 0,
+            practiceHours: 142 // Default value
+          };
+          
+          setTeamStats(enhancedTeamData);
+          setPlayerStats(comprehensiveStats.players);
+        } else {
+          setTeamStats(teamData);
+          setPlayerStats(playersData);
+        }
+        
+        setRecentMatches(matchesData);
+        setPerformanceDataState(perfData);
+        
+        console.log(`✅ Command Center: ${isLiveMode ? 'GRID' : 'Mock'} data loaded successfully`);
+      } catch (error) {
+        console.error('❌ Command Center: Error fetching data:', error);
+        // Fallback to mock data
+        setTeamStats({ winRate: 72, avgKD: 1.42, clutchRate: 34, practiceHours: 142 });
+        setPlayerStats(mockPlayers);
+        setRecentMatches(mockMatches);
+        setPerformanceDataState(performanceData);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [isLiveMode]);
 
   const handleViewStrategy = () => {
     navigate('/coach/strategy');
@@ -65,9 +135,11 @@ export default function CommandCenter() {
         </div>
         
         {/* Live indicator */}
-        <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/30">
+        <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${isLiveMode ? 'bg-status-success/10 border border-status-success/30' : 'bg-status-warning/10 border border-status-warning/30'}`}>
           <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          <span className="text-sm font-mono text-primary">LIVE DATA FEED</span>
+          <span className={`text-sm font-mono ${isLiveMode ? 'text-status-success' : 'text-status-warning'}`}>
+            {isLiveMode ? 'LIVE DATA FEED' : 'DEMO MODE'}
+          </span>
         </div>
       </motion.div>
 
@@ -96,48 +168,89 @@ export default function CommandCenter() {
 
       {/* Key Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard
-          title="Win Rate"
-          value="72%"
-          subtitle="Last 30 days"
-          icon={Trophy}
-          trend={{ value: 8, isPositive: true }}
-          variant="cyan"
-          delay={0.2}
-        />
-        <MetricCard
-          title="Avg. Match Duration"
-          value="34:28"
-          subtitle="Minutes"
-          icon={Clock}
-          variant="blue"
-          delay={0.3}
-        />
-        <MetricCard
-          title="Objective Control"
-          value="85%"
-          subtitle="Dragons & Barons"
-          icon={Target}
-          trend={{ value: 12, isPositive: true }}
-          variant="green"
-          delay={0.4}
-        />
-        <MetricCard
-          title="Team KDA"
-          value="4.2"
-          subtitle="Average"
-          icon={TrendingUp}
-          trend={{ value: 3, isPositive: false }}
-          variant="warning"
-          delay={0.5}
-        />
+        {isLiveMode && teamStats && 'paceScore' in teamStats ? (
+          // Enhanced GRID metrics
+          <>
+            <MetricCard
+              title="Pace Score"
+              value={`${((teamStats as any).paceScore * 100).toFixed(0)}%`}
+              subtitle="Round timing efficiency"
+              icon={Activity}
+              variant="cyan"
+              delay={0.2}
+            />
+            <MetricCard
+              title="OPE"
+              value={`${((teamStats as any).opeTeam * 100).toFixed(0)}%`}
+              subtitle="Objective pressure efficiency"
+              icon={Target}
+              variant="green"
+              delay={0.3}
+            />
+            <MetricCard
+              title="DSV"
+              value={(teamStats as any).dsvTeam.toFixed(2)}
+              subtitle="Decision variance (lower better)"
+              icon={Brain}
+              variant={((teamStats as any).dsvTeam < 0.3) ? "green" : "warning"}
+              delay={0.4}
+            />
+            <MetricCard
+              title="Tempo Leak"
+              value={(teamStats as any).tempoLeakTeam.toFixed(2)}
+              subtitle="Pace deviation (lower better)"
+              icon={Gauge}
+              variant={((teamStats as any).tempoLeakTeam < 0.2) ? "green" : "warning"}
+              delay={0.5}
+            />
+          </>
+        ) : (
+          // Standard metrics
+          <>
+            <MetricCard
+              title="Win Rate"
+              value={teamStats ? `${teamStats.winRate}%` : "72%"}
+              subtitle="Last 30 days"
+              icon={Trophy}
+              trend={teamStats?.winRateChange ? { value: teamStats.winRateChange, isPositive: teamStats.winRateChange > 0 } : { value: 8, isPositive: true }}
+              variant="cyan"
+              delay={0.2}
+            />
+            <MetricCard
+              title="Avg. Match Duration"
+              value="34:28"
+              subtitle="Minutes"
+              icon={Clock}
+              variant="blue"
+              delay={0.3}
+            />
+            <MetricCard
+              title="Objective Control"
+              value="85%"
+              subtitle="Dragons & Barons"
+              icon={Target}
+              trend={{ value: 12, isPositive: true }}
+              variant="green"
+              delay={0.4}
+            />
+            <MetricCard
+              title="Team KDA"
+              value={teamStats ? teamStats.avgKD.toFixed(2) : "4.2"}
+              subtitle="Average"
+              icon={TrendingUp}
+              trend={teamStats?.kdChange ? { value: teamStats.kdChange, isPositive: teamStats.kdChange > 0 } : { value: 3, isPositive: false }}
+              variant="warning"
+              delay={0.5}
+            />
+          </>
+        )}
       </div>
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Chart */}
         <div className="lg:col-span-2">
-          <PerformanceChart data={performanceData} delay={0.6} />
+          <PerformanceChart data={performanceDataState} delay={0.6} />
         </div>
 
         {/* Right Column - Quick Actions */}
@@ -148,8 +261,8 @@ export default function CommandCenter() {
 
       {/* Bottom Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <TeamStatusCard players={mockPlayers} delay={0.8} />
-        <RecentMatchesCard matches={mockMatches} delay={0.9} />
+        <TeamStatusCard players={playerStats.length > 0 ? playerStats : mockPlayers} delay={0.8} />
+        <RecentMatchesCard matches={recentMatches.length > 0 ? recentMatches : mockMatches} delay={0.9} />
       </div>
     </div>
   );

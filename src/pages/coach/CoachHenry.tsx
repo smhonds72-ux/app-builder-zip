@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Mic, Send, Sparkles, Brain, TrendingUp, Loader2 } from 'lucide-react';
+import { Mic, Send, Sparkles, Brain, TrendingUp, Loader2, Database } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -113,7 +113,9 @@ export default function CoachHenry() {
         
         <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-status-success/10 border border-status-success/30">
           <div className="w-2 h-2 rounded-full bg-status-success animate-pulse" />
-          <span className="text-sm font-mono text-status-success">HENRY ONLINE</span>
+          <span className="text-sm font-mono text-status-success">
+            HENRY {isLiveMode ? 'LIVE' : 'DEMO'} MODE
+          </span>
         </div>
       </motion.div>
 
@@ -211,6 +213,22 @@ export default function CoachHenry() {
           transition={{ delay: 0.2 }}
           className="w-80 space-y-4 hidden lg:block"
         >
+          {/* Data Source Indicator */}
+          <div className="p-4 rounded-xl bg-card/50 backdrop-blur-xl border border-primary/30">
+            <div className="flex items-center gap-2 mb-3">
+              <Database className="w-4 h-4 text-primary" />
+              <h3 className="font-display font-bold text-foreground text-sm">DATA SOURCE</h3>
+            </div>
+            <div className={`p-3 rounded-lg ${isLiveMode ? 'bg-status-success/10 border border-status-success/20' : 'bg-status-warning/10 border border-status-warning/20'}`}>
+              <p className={`text-xs font-medium ${isLiveMode ? 'text-status-success' : 'text-status-warning'}`}>
+                {isLiveMode ? '🔴 LIVE DATABASE' : '🟡 MOCK DATA'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {isLiveMode ? 'Real-time team analytics' : 'Simulated performance data'}
+              </p>
+            </div>
+          </div>
+
           {/* Suggested Questions */}
           <div className="p-4 rounded-xl bg-card/50 backdrop-blur-xl border border-primary/30">
             <div className="flex items-center gap-2 mb-3">

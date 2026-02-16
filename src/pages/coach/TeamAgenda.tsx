@@ -1,10 +1,8 @@
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  FileText, 
   Clock, 
-  ChevronRight,
   Plus,
   Video,
   Sparkles,
@@ -13,7 +11,9 @@ import {
   Edit3,
   Trash2,
   Save,
-  Loader2
+  Loader2,
+  Brain,
+  Gauge
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -26,14 +26,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { dataService } from '@/lib/dataService';
+import { useDataMode } from '@/contexts/DataContext';
 
 interface AgendaItem {
   id: string;
@@ -87,6 +82,7 @@ const initialAgendaItems: AgendaItem[] = [
 export default function TeamAgenda() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isLiveMode } = useDataMode();
   const [agendaItems, setAgendaItems] = useState<AgendaItem[]>(initialAgendaItems);
   const [coachNotes, setCoachNotes] = useState("Focus on Baron positioning - JAX needs to maintain better proximity to pit. Team coordination on objective calls needs work.");
   const [isSaving, setIsSaving] = useState(false);
@@ -94,6 +90,7 @@ export default function TeamAgenda() {
   const [showEditItem, setShowEditItem] = useState(false);
   const [selectedItem, setSelectedItem] = useState<AgendaItem | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [teamMetrics, setTeamMetrics] = useState<any>(null);
   const [newItem, setNewItem] = useState({
     title: '',
     timestamp: '',
@@ -101,18 +98,91 @@ export default function TeamAgenda() {
     dsv: 0,
   });
 
+  useEffect(() => {
+    const fetchAgendaData = async () => {
+      if (isLiveMode) {
+        try {
+          console.log('📅 Team Agenda: Fetching enhanced data...');
+          
+          const enhancedTeamStats = await dataService.getEnhancedTeamStats();
+          
+          setTeamMetrics(enhancedTeamStats);
+          console.log('✅ Team Agenda: Enhanced data loaded successfully');
+        } catch (error) {
+          console.error('❌ Team Agenda: Error fetching enhanced data:', error);
+        }
+      }
+    };
+
+    fetchAgendaData();
+  }, [isLiveMode]);
+
   const handleExportPDF = () => {
     toast({
       title: "Exporting PDF",
-      description: "Your agenda is being exported...",
+      description: "Your agenda is being generated...",
     });
-    setTimeout(() => {
+    
+    try {
+      // Create PDF content
+      const pdfContent = generateAgendaPDF();
+      
+      // Create blob and download
+      const blob = new Blob([pdfContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `team-agenda-${new Date().toISOString().split('T')[0]}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
       toast({
         title: "Export Complete",
-        description: "Team agenda PDF has been downloaded.",
+        description: "Team agenda has been exported successfully.",
       });
-    }, 1500);
+    } catch (error) {
+      console.error('❌ PDF Export Error:', error);
+      toast({
+        title: "Export Failed",
+        description: "Unable to export agenda",
+        variant: "destructive"
+      });
+    }
   };
+
+const generateAgendaPDF = (): string => {
+  const header = 'LIVEWIRE ESPORTS TEAM AGENDA\n';
+  const date = `Generated: ${new Date().toLocaleString()}\n`;
+  const mode = isLiveMode && teamMetrics ? `Mode: LIVE DATA ENABLED\nDSV: ${teamMetrics.dsvTeam.toFixed(2)}\nOPE: ${(teamMetrics.opeTeam * 100).toFixed(0)}%\nTempo Leak: ${teamMetrics.tempoLeakTeam.toFixed(2)}\n` : 'Mode: DEMO DATA\n\n';
+  
+  let content = '=' .repeat(50) + '\n';
+  content += 'AGENDA ITEMS\n';
+  content += '=' .repeat(50) + '\n\n';
+  
+  agendaItems
+    .sort((a, b) => a.priority - b.priority)
+    .forEach((item, index) => {
+      content += `${index + 1}. ${item.title}\n`;
+      content += `   Priority: ${item.priority}\n`;
+      content += `   Time: ${item.timestamp}\n`;
+      content += `   DSV: ${item.dsv.toFixed(2)}\n`;
+      content += `   Description: ${item.description}\n`;
+      if (item.notes) {
+        content += `   Notes: ${item.notes}\n`;
+      }
+      content += '\n';
+    });
+  
+  content += '=' .repeat(50) + '\n';
+  content += `COACH NOTES\n`;
+  content += '=' .repeat(50) + '\n\n';
+  content += coachNotes + '\n\n';
+  content += '=' .repeat(50) + '\n';
+  
+  return header + date + mode + content + 'END OF AGENDA\n';
+};
 
   const handleScheduleSession = () => {
     navigate('/coach/training');
@@ -121,28 +191,79 @@ export default function TeamAgenda() {
   const handleAutoGenerate = async () => {
     setIsGenerating(true);
     toast({
-      title: "Analyzing Match",
-      description: "AI is identifying key moments...",
+      title: "Analyzing Match Data",
+      description: "AI is generating agenda based on live performance...",
     });
     
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    const newAgendaItem: AgendaItem = {
-      id: Date.now().toString(),
-      priority: agendaItems.length + 1,
-      title: 'Vision Setup Before Dragon at 14:00',
-      dsv: -6.8,
-      timestamp: '14:00',
-      description: 'Team vision setup was late, leading to risky face-check. Could have been punished.',
-      notes: ''
-    };
-    
-    setAgendaItems(prev => [...prev, newAgendaItem]);
-    setIsGenerating(false);
-    toast({
-      title: "Analysis Complete",
-      description: "1 new agenda item has been added.",
-    });
+    try {
+      if (isLiveMode && teamMetrics) {
+        // Generate agenda items based on actual team metrics
+        const generatedItems: AgendaItem[] = [
+          {
+            id: Date.now().toString(),
+            priority: 1,
+            title: `Early Game Vision Setup - OPE: ${(teamMetrics.opeTeam * 100).toFixed(0)}%`,
+            dsv: teamMetrics.dsvTeam,
+            timestamp: '08:00',
+            description: `Team objective pressure efficiency is ${(teamMetrics.opeTeam * 100).toFixed(0)}%. Focus on establishing vision control before first major objective.`,
+            notes: `DSV Analysis: ${teamMetrics.dsvTeam > 0.3 ? 'High decision variance detected - review comms' : 'Solid decision making'}`
+          },
+          {
+            id: (Date.now() + 1).toString(),
+            priority: 2,
+            title: `Mid Game Tempo Management - Tempo Leak: ${teamMetrics.tempoLeakTeam.toFixed(2)}`,
+            dsv: teamMetrics.dsvTeam * 0.8,
+            timestamp: '15:00',
+            description: `Pace deviation of ${teamMetrics.tempoLeakTeam.toFixed(2)} from optimal. Need to improve round timing and coordination.`,
+            notes: `Tempo Impact: ${teamMetrics.tempoLeakTeam > 0.2 ? 'Significant timing losses' : 'Good pace control'}`
+          },
+          {
+            id: (Date.now() + 2).toString(),
+            priority: 3,
+            title: `Late Game Macro Execution - DSV: ${(teamMetrics.dsvTeam * 0.9).toFixed(2)}`,
+            dsv: teamMetrics.dsvTeam * 1.1,
+            timestamp: '22:00',
+            description: `Decision skew variance increases to ${(teamMetrics.dsvTeam * 1.1).toFixed(2)} under pressure. Critical macro review needed.`,
+            notes: `Clutch Factor: Based on recent performance, team needs ${teamMetrics.dsvTeam > 0.25 ? 'clutch training' : 'macro refinement'}`
+          }
+        ];
+        
+        setAgendaItems((prev: AgendaItem[]) => [...prev, ...generatedItems]);
+        
+        toast({
+          title: "AI Agenda Generated",
+          description: `Created ${generatedItems.length} agenda items based on live team metrics`,
+        });
+      } else {
+        // Fallback to mock generation
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const newAgendaItem: AgendaItem = {
+          id: Date.now().toString(),
+          priority: agendaItems.length + 1,
+          title: 'Vision Setup Before Dragon at 14:00',
+          dsv: -6.8,
+          timestamp: '14:00',
+          description: 'Team vision setup was late, leading to risky face-check. Could have been punished.',
+          notes: ''
+        };
+        
+        setAgendaItems((prev: AgendaItem[]) => [...prev, newAgendaItem]);
+        
+        toast({
+          title: "Mock Agenda Generated",
+          description: "Created sample agenda item for demonstration",
+        });
+      }
+    } catch (error) {
+      console.error('❌ Team Agenda: Error generating agenda:', error);
+      toast({
+        title: "Generation Failed",
+        description: "Unable to generate agenda items",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleAddItem = () => {

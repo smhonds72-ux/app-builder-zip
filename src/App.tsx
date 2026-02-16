@@ -30,7 +30,18 @@ import PlayerVOD from "./pages/player/PlayerVOD";
 import PlayerLeaks from "./pages/player/PlayerLeaks";
 import PlayerSettings from "./pages/player/PlayerSettings";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30000, // 30 seconds
+      cacheTime: 300000, // 5 minutes
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+      retry: 2,
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

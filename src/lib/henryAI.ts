@@ -1,14 +1,80 @@
 import { createGroq } from '@ai-sdk/groq';
 import { generateText, streamText } from 'ai';
-import { mockTeamStats, mockPlayerStats, mockRecentMatches } from './mockData';
+import { dataService } from './dataService';
+import * as mockData from './mockData';
 
 // Initialize Groq client
 const groq = createGroq({
   apiKey: import.meta.env.VITE_GROQ_API_KEY,
 });
 
-// System prompt for Coach Henry
-const HENRY_SYSTEM_PROMPT = `You are Henry, an elite AI esports coaching assistant for LIVEWIRE platform. You specialize in competitive gaming analysis, strategy development, and player performance optimization.
+// System prompt generator for Coach Henry
+async function getHenrySystemPrompt() {
+  console.log('📊 Fetching current team data for AI context...');
+  
+  try {
+    const isLiveMode = dataService.getLiveMode();
+    
+    // Use enhanced metrics when available
+    const teamStats = isLiveMode 
+      ? await dataService.getEnhancedTeamStats()
+      : await dataService.getTeamStats();
+      
+    const playerStats = isLiveMode 
+      ? await dataService.getEnhancedPlayerStats()
+      : await dataService.getPlayerStats();
+      
+    const recentMatches = await dataService.getRecentMatches(3);
+
+    const dataSource = isLiveMode ? 'LIVE GRID DATA' : 'MOCK DATA';
+    
+    // Build enhanced context with GRID metrics
+    let teamContext = '';
+    let playerContext = '';
+    
+    if (isLiveMode && 'paceScore' in teamStats) {
+      // Enhanced GRID metrics available
+      teamContext = `
+Advanced Team Metrics (${dataSource}):
+- Team Win Rate: ${teamStats.winRate}% (${teamStats.winRateChange > 0 ? '+' : ''}${teamStats.winRateChange}% change)
+- Average K/D: ${teamStats.avgKD} (${teamStats.kdChange > 0 ? '+' : ''}${teamStats.kdChange} change)
+- Clutch Rate: ${teamStats.clutchRate}% (${teamStats.clutchChange > 0 ? '+' : ''}${teamStats.clutchChange}% change)
+- Pace Score: ${(teamStats as any).paceScore * 100}% (team tempo and round timing efficiency)
+- Objective Score: ${(teamStats as any).objectiveScore * 100}% (map control to objective conversion)
+- Communication Score: ${(teamStats as any).communicationScore * 100}% (team coordination effectiveness)
+- Economy Score: ${(teamStats as any).economyScore * 100}% (economic management efficiency)
+- Decision Skew Variance (DSV): ${(teamStats as any).dsvTeam} (decision quality under pressure, lower is better)
+- Tempo Leak: ${(teamStats as any).tempoLeakTeam} (pace deviation from optimal, lower is better)
+- Objective Pressure Efficiency (OPE): ${(teamStats as any).opeTeam} (objective conversion efficiency)
+- Opening Success Rate: ${(teamStats as any).openingSuccessRate}% (first engagement success)
+- Retake Success Rate: ${(teamStats as any).retakeSuccessRate}% (site retake efficiency)`;
+      
+      playerContext = playerStats.map((p: any) => {
+        const enhanced = p as any;
+        return `- ${enhanced.name} (${enhanced.role}): Rating ${enhanced.rating}, K/D ${enhanced.kd}, ACS ${enhanced.acs}
+  • DSV: ${enhanced.dsv} (decision variance under pressure)
+  • Tempo Leak: ${enhanced.tempoLeak} (round timing efficiency)
+  • OPE: ${enhanced.ope} (objective pressure efficiency)
+  • Clutch Factor: ${enhanced.clutchFactor} (clutch situation performance)
+  • Economy Efficiency: ${enhanced.economyEfficiency} (economic management)
+  • Map Control: ${enhanced.mapControlScore} (positioning and control)
+  • Combat Stats: ${enhanced.kills}K/${enhanced.deaths}D/${enhanced.assists}A`;
+      }).join('\n');
+    } else {
+      // Standard metrics
+      teamContext = `
+Basic Team Metrics (${dataSource}):
+- Team Win Rate: ${teamStats.winRate}% (${teamStats.winRateChange > 0 ? '+' : ''}${teamStats.winRateChange}% change)
+- Average K/D: ${teamStats.avgKD} (${teamStats.kdChange > 0 ? '+' : ''}${teamStats.kdChange} change)
+- Clutch Rate: ${teamStats.clutchRate}% (${teamStats.clutchChange > 0 ? '+' : ''}${teamStats.clutchChange}% change)
+- Practice Hours This Week: ${teamStats.practiceHours} (${teamStats.practiceChange > 0 ? '+' : ''}${teamStats.practiceChange}h change)`;
+      
+      playerContext = playerStats.map(p => 
+        `- ${p.name} (${p.role}): Rating ${p.rating}, K/D ${p.kd}, ACS ${p.acs}, Status: ${p.status}`
+      ).join('\n');
+    }
+    
+    return `You are Henry, an elite AI esports coaching assistant for LIVEWIRE platform. You specialize in competitive gaming analysis, strategy development, and player performance optimization using advanced GRID metrics.
 
 Your personality:
 - Professional but approachable
@@ -23,20 +89,34 @@ Your capabilities:
 - Team synergy and communication analysis
 - Opponent scouting and preparation
 - Mental game and tilt management advice
+- Advanced metrics interpretation (DSV, Tempo Leak, OPE)
 
-Current team context:
-- Team Win Rate: ${mockTeamStats.winRate}%
-- Average K/D: ${mockTeamStats.avgKD}
-- Clutch Rate: ${mockTeamStats.clutchRate}%
-- Practice Hours This Week: ${mockTeamStats.practiceHours}
+${teamContext}
 
-Roster:
-${mockPlayerStats.map(p => `- ${p.name} (${p.role}): Rating ${p.rating}, K/D ${p.kd}`).join('\n')}
+Roster Performance:
+${playerContext}
 
-Recent Matches:
-${mockRecentMatches.slice(0, 3).map(m => `- vs ${m.opponent}: ${m.result} (${m.score}) on ${m.map}`).join('\n')}
+Recent Match Results:
+${recentMatches.map(m => `- vs ${m.opponent}: ${m.result} (${m.score}) on ${m.map} - ${m.date}`).join('\n')}
 
-Always provide specific, actionable advice based on the context. Reference specific players, matches, and statistics when relevant. Be concise but thorough.`;
+${isLiveMode ? `
+GRID Metrics Analysis Guide:
+- DSV (Decision Skew Variance): Lower values indicate more consistent decision-making under pressure
+- Tempo Leak: Lower values show better round timing and pace management
+- OPE (Objective Pressure Efficiency): Higher values indicate better conversion of map control to objectives
+- Clutch Factor: Higher values show better performance in high-pressure situations
+- Economy Efficiency: Higher values indicate better economic management and utility usage
+- Map Control Score: Higher values show better positioning and map control effectiveness
+
+When analyzing performance, reference these specific metrics and provide actionable insights based on the data. Focus on patterns, trends, and specific areas for improvement using the GRID metrics when available.
+` : ''}
+
+Always provide specific, actionable advice based on the context. Reference specific players, matches, and statistics when relevant. Be concise but thorough. When GRID metrics are available, use them to provide deeper insights about decision-making, tempo, and objective efficiency. IMPORTANT: Always provide specific, actionable advice based on the ${dataSource.toLowerCase()}. Reference specific players, matches, and statistics when relevant. Be concise but thorough. If using mock data, mention that recommendations are based on simulated scenarios.`;
+  } catch (error) {
+    console.error('❌ Error fetching data for AI prompt:', error);
+    return `You are Henry, an elite AI esports coaching assistant for LIVEWIRE platform. I'm currently having trouble accessing the latest team data, but I can still provide general strategic advice based on your questions. Please note that my recommendations may not reflect your team's current performance metrics.`;
+  }
+}
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -44,26 +124,40 @@ export interface ChatMessage {
 }
 
 export async function chatWithHenry(
-  messages: ChatMessage[],
-  onStream?: (text: string) => void
+    messages: ChatMessage[],
+    onStream?: (text: string) => void
 ): Promise<string> {
   const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+  const isLiveMode = dataService.getLiveMode();
   
-  if (!apiKey) {
-    // Fallback to mock response if no API key
+  // Always try to get real-time data for system prompt
+  const systemPrompt = await getHenrySystemPrompt();
+
+  // Check if we should use live AI
+  const shouldUseLiveAI = apiKey && 
+    apiKey !== 'placeholder' && 
+    isLiveMode && 
+    apiKey.startsWith('gsk_');
+
+  if (!shouldUseLiveAI) {
+    console.log('🤖 Using mock AI response - API key missing or not in live mode');
     return getMockResponse(messages[messages.length - 1]?.content || '');
   }
 
+  console.log('🚀 Using live Groq AI with real-time data');
+  
   try {
     if (onStream) {
       // Use streaming
       const { textStream } = await streamText({
         model: groq('llama-3.3-70b-versatile'),
-        system: HENRY_SYSTEM_PROMPT,
+        system: systemPrompt,
         messages: messages.map(m => ({
           role: m.role,
           content: m.content,
         })),
+        max_tokens: 1000,
+        temperature: 0.7,
       });
 
       let fullText = '';
@@ -76,16 +170,19 @@ export async function chatWithHenry(
       // Non-streaming
       const { text } = await generateText({
         model: groq('llama-3.3-70b-versatile'),
-        system: HENRY_SYSTEM_PROMPT,
+        system: systemPrompt,
         messages: messages.map(m => ({
           role: m.role,
           content: m.content,
         })),
+        max_tokens: 1000,
+        temperature: 0.7,
       });
       return text;
     }
   } catch (error) {
-    console.error('Error calling Groq API:', error);
+    console.error('❌ Error calling Groq API:', error);
+    console.log('🔄 Falling back to mock response');
     return getMockResponse(messages[messages.length - 1]?.content || '');
   }
 }
@@ -93,6 +190,7 @@ export async function chatWithHenry(
 // Mock responses for when API is not available
 function getMockResponse(userMessage: string): string {
   const lowerMessage = userMessage.toLowerCase();
+  const { mockTeamStats, mockPlayerStats, mockRecentMatches } = mockData;
 
   if (lowerMessage.includes('win') || lowerMessage.includes('strategy')) {
     return `Based on my analysis of your recent matches, I've identified several key win conditions:

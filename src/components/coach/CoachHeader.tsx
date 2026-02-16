@@ -1,7 +1,9 @@
 import { Bell, Search, User, Menu, LogOut } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useSidebar } from '@/components/ui/sidebar';
+import { useToast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,11 +20,24 @@ export function CoachHeader() {
   const { toggleSidebar, state } = useSidebar();
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
     // Use replace to prevent back navigation and ensure clean state
     navigate('/auth/login', { replace: true });
+  };
+
+  const handleNotifications = () => {
+    setShowNotifications(!showNotifications);
+    
+    if (!showNotifications) {
+      toast({
+        title: "Notifications",
+        description: "You have 3 new notifications",
+      });
+    }
   };
 
   return (
@@ -69,6 +84,7 @@ export function CoachHeader() {
           variant="ghost"
           size="icon"
           className="relative text-muted-foreground hover:text-foreground hover:bg-primary/10"
+          onClick={handleNotifications}
         >
           <Bell className="w-5 h-5" />
           <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-destructive" />

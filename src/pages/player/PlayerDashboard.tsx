@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -7,7 +8,10 @@ import {
   Video,
   AlertTriangle,
   ChevronRight,
-  Zap
+  Zap,
+  Brain,
+  Activity,
+  Gauge
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -22,6 +26,33 @@ import {
   Radar,
   ResponsiveContainer
 } from 'recharts';
+import { dataService } from '@/lib/dataService';
+import { useDataMode } from '@/contexts/DataContext';
+
+// Define proper interfaces
+interface PerformanceData {
+  metric: string;
+  value: number;
+  baseline: number;
+}
+
+interface TopLeak {
+  id: string;
+  title: string;
+  value: string;
+  description: string;
+  severity: 'high' | 'medium' | 'low';
+  drillAvailable: boolean;
+  drillId: string | null;
+}
+
+interface UpcomingItem {
+  type: 'drill' | 'vod';
+  title: string;
+  dueIn: string;
+  status: 'pending' | 'scheduled';
+  id: string;
+}
 
 const performanceData = [
   { metric: 'OPE', value: 78, baseline: 70 },
@@ -70,6 +101,52 @@ const upcomingItems = [
 
 export default function PlayerDashboard() {
   const navigate = useNavigate();
+  const { isLiveMode } = useDataMode();
+  const [playerData, setPlayerData] = useState<any>(null);
+  const [performanceDataState, setPerformanceDataState] = useState<PerformanceData[]>(performanceData);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchPlayerData = async () => {
+      if (isLiveMode) {
+        try {
+          setLoading(true);
+          console.log('📊 Player Dashboard: Fetching enhanced data...');
+          
+          const enhancedPlayerStats = await dataService.getEnhancedPlayerStats();
+          
+          // Get first player's data for dashboard
+          const currentPlayer = enhancedPlayerStats[0];
+          if (currentPlayer) {
+            // Transform performance data
+            const transformedPerformanceData = [
+              { metric: 'OPE', value: Math.round(currentPlayer.ope * 100), baseline: 70 },
+              { metric: 'DSV', value: Math.round((1 - currentPlayer.dsv) * 100), baseline: 70 },
+              { metric: 'Tempo', value: Math.round((1 - currentPlayer.tempoLeak) * 100), baseline: 70 },
+              { metric: 'Mechanics', value: Math.round(currentPlayer.acs / 3), baseline: 70 },
+              { metric: 'Obj Gravity', value: Math.round(currentPlayer.mapControlScore * 100), baseline: 70 },
+              { metric: 'Utility', value: Math.round(currentPlayer.economyEfficiency * 100), baseline: 70 },
+            ];
+            
+            setPlayerData(currentPlayer);
+            setPerformanceDataState(transformedPerformanceData);
+            console.log('✅ Player Dashboard: Enhanced data loaded successfully');
+          }
+        } catch (error) {
+          console.error('❌ Player Dashboard: Error fetching enhanced data:', error);
+          // Fallback to mock data
+          setPerformanceDataState(performanceData);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        // Use mock data
+        setPerformanceDataState(performanceData);
+      }
+    };
+
+    fetchPlayerData();
+  }, [isLiveMode]);
 
   const handleViewDrills = () => {
     navigate('/player/drills');
@@ -169,7 +246,7 @@ export default function PlayerDashboard() {
           
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <RadarChart data={performanceData}>
+              <RadarChart data={performanceDataState}>
                 <PolarGrid stroke="hsl(var(--primary) / 0.2)" />
                 <PolarAngleAxis 
                   dataKey="metric" 

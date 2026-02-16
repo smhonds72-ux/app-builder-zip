@@ -1,10 +1,12 @@
 import { Bell, Search, LogOut } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DataModeToggle } from '@/components/DataModeToggle';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,11 +19,24 @@ import {
 export function PlayerHeader() {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
     // Use replace to prevent back navigation and ensure clean state
     navigate('/auth/login', { replace: true });
+  };
+
+  const handleNotifications = () => {
+    setShowNotifications(!showNotifications);
+    
+    if (!showNotifications) {
+      toast({
+        title: "Notifications",
+        description: "You have 2 new training reminders",
+      });
+    }
   };
 
   const initials = profile?.full_name
@@ -49,6 +64,7 @@ export function PlayerHeader() {
           variant="ghost" 
           size="icon" 
           className="relative text-muted-foreground hover:text-foreground hover:bg-brand-blue/10"
+          onClick={handleNotifications}
         >
           <Bell className="w-5 h-5" />
           <span className="absolute top-1 right-1 w-2 h-2 bg-brand-blue rounded-full animate-pulse" />
