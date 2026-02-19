@@ -1,0 +1,443 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Font families */
+  --font-orbitron: 'Orbitron', sans-serif;
+  --font-inter: 'Inter', sans-serif;
+  --font-jetbrains-mono: 'JetBrains Mono', monospace;
+  
+  /* Core HSL Colors */
+  --background: 222 47% 7%;
+  --foreground: 210 40% 96%;
+  
+  --card: 220 40% 10%;
+  --card-foreground: 210 40% 96%;
+  
+  --popover: 220 40% 10%;
+  --popover-foreground: 210 40% 96%;
+  
+  --primary: 187 94% 43%;
+  --primary-foreground: 222 47% 7%;
+  
+  --secondary: 217 33% 17%;
+  --secondary-foreground: 210 40% 96%;
+  
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 20% 65%;
+  
+  --accent: 217 33% 17%;
+  --accent-foreground: 210 40% 96%;
+  
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
+  
+  --border: 217 33% 17%;
+  --input: 217 33% 17%;
+  --ring: 187 94% 43%;
+  
+  --radius: 0.75rem;
+  
+  /* Livewire Brand Colors */
+  --brand-cyan: 187 94% 43%;
+  --brand-blue: 217 91% 60%;
+  --brand-navy: 224 76% 40%;
+  
+  /* Status Colors */
+  --status-success: 160 84% 39%;
+  --status-warning: 38 92% 50%;
+  --status-danger: 0 84% 60%;
+  --status-info: 187 94% 43%;
+  
+  /* Background shades */
+  --bg-primary: 222 47% 7%;
+  --bg-secondary: 220 40% 10%;
+  --bg-tertiary: 215 25% 17%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-inter);
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--bg-secondary));
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.3);
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.5);
+  }
+}
+
+@layer utilities {
+  /* Font utilities */
+  .font-display {
+    font-family: var(--font-orbitron);
+  }
+  
+  .font-body {
+    font-family: var(--font-inter);
+  }
+  
+  .font-mono {
+    font-family: var(--font-jetbrains-mono);
+  }
+}
+
+/* Animations */
+@keyframes scan {
+  0%, 100% {
+    transform: translateY(-100%);
+  }
+  50% {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes stream {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 200% 0%;
+  }
+}
+
+@keyframes glitch {
+  0%, 100% {
+    transform: translate(0);
+  }
+  20% {
+    transform: translate(-2px, 2px);
+  }
+  40% {
+    transform: translate(-2px, -2px);
+  }
+  60% {
+    transform: translate(2px, 2px);
+  }
+  80% {
+    transform: translate(2px, -2px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.4;
+    filter: blur(20px);
+  }
+  50% {
+    opacity: 0.8;
+    filter: blur(30px);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes rotate-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* Grid pattern background */
+.grid-pattern {
+  background-image: 
+    linear-gradient(hsl(var(--primary) / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--primary) / 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.grid-pattern-large {
+  background-image: 
+    linear-gradient(hsl(var(--primary) / 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--primary) / 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+/* Scanline overlay effect */
+.scanline-overlay {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanline-overlay::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    hsl(var(--primary) / 0.08) 50%,
+    transparent 100%
+  );
+  animation: scan 3s linear infinite;
+  pointer-events: none;
+}
+
+/* Holographic text effect */
+.holo-text {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary)),
+    hsl(var(--brand-blue)),
+    hsl(270 91% 60%),
+    hsl(var(--primary))
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: stream 4s linear infinite;
+}
+
+/* Glass morphism utility */
+.glass {
+  background: hsl(var(--bg-secondary) / 0.4);
+  backdrop-filter: blur(20px);
+  border: 1px solid hsl(var(--primary) / 0.2);
+}
+
+.glass-strong {
+  background: hsl(var(--bg-secondary) / 0.7);
+  backdrop-filter: blur(30px);
+  border: 1px solid hsl(var(--primary) / 0.3);
+}
+
+/* Data stream background */
+.data-stream {
+  background: 
+    linear-gradient(
+      45deg,
+      transparent 30%,
+      hsl(var(--primary) / 0.05) 50%,
+      transparent 70%
+    );
+  background-size: 200% 200%;
+  animation: stream 3s linear infinite;
+}
+
+/* Glow effects */
+.glow-cyan {
+  box-shadow: 0 0 30px hsl(var(--primary) / 0.3);
+}
+
+.glow-cyan-strong {
+  box-shadow: 0 0 50px hsl(var(--primary) / 0.5);
+}
+
+.glow-blue {
+  box-shadow: 0 0 30px hsl(var(--brand-blue) / 0.3);
+}
+
+.glow-green {
+  box-shadow: 0 0 30px hsl(var(--status-success) / 0.3);
+}
+
+.glow-red {
+  box-shadow: 0 0 30px hsl(var(--destructive) / 0.3);
+}
+
+/* Text glow */
+.text-glow-cyan {
+  text-shadow: 0 0 20px hsl(var(--primary) / 0.6);
+}
+
+.text-glow-blue {
+  text-shadow: 0 0 20px hsl(var(--brand-blue) / 0.6);
+}
+
+/* Hexagon background pattern */
+.hex-pattern {
+  background-image: 
+    radial-gradient(circle at 50% 50%, hsl(var(--primary) / 0.05) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+/* Animated border */
+.animated-border {
+  position: relative;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--primary) / 0.2),
+    hsl(var(--brand-blue) / 0.2),
+    hsl(var(--primary) / 0.2)
+  );
+  background-size: 200% auto;
+  animation: stream 3s linear infinite;
+}
+
+/* Tactical corner accents */
+.corner-accent::before,
+.corner-accent::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: hsl(var(--primary) / 0.5);
+  border-style: solid;
+}
+
+.corner-accent::before {
+  top: 0;
+  left: 0;
+  border-width: 2px 0 0 2px;
+}
+
+.corner-accent::after {
+  bottom: 0;
+  right: 0;
+  border-width: 0 2px 2px 0;
+}
+
+/* Metric card animations */
+.metric-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.metric-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px hsl(var(--primary) / 0.2);
+}
+
+/* Loading spinner */
+.spinner {
+  border: 3px solid hsl(var(--primary) / 0.1);
+  border-top-color: hsl(var(--primary));
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Holographic card effect */
+.holo-card {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--bg-secondary) / 0.8) 0%,
+    hsl(var(--bg-tertiary) / 0.6) 50%,
+    hsl(var(--bg-secondary) / 0.8) 100%
+  );
+  backdrop-filter: blur(20px);
+  border: 1px solid hsl(var(--primary) / 0.2);
+}
+
+.holo-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.4),
+    hsl(var(--brand-blue) / 0.4),
+    hsl(var(--primary) / 0.4)
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: stream 3s linear infinite;
+  background-size: 200% auto;
+}
+
+/* Custom animations utility classes */
+.animate-scan {
+  animation: scan 2s linear infinite;
+}
+
+.animate-stream {
+  animation: stream 3s linear infinite;
+}
+
+.animate-glitch {
+  animation: glitch 0.3s infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-rotate-slow {
+  animation: rotate-slow 20s linear infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  .grid-pattern {
+    background-size: 15px 15px;
+  }
+  
+  .scanline-overlay::after {
+    animation-duration: 2s;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
